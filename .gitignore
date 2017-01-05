@@ -65,6 +65,7 @@ docs/_build/
 
 # PyBuilder
 target/
+romfs/
 
 # IPython Notebook
 .ipynb_checkpoints

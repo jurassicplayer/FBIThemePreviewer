@@ -11,22 +11,21 @@ user friendly checks that make sure the program doesn't break when unexpected th
 So if you are missing a file, or have a typo, fix it.
 
 Features:
-- A subsampled and then zoomed selection overlay bar (I can't fix this, FBI's theme image is 
-    320x20, but on the 3DS it shows up as 320x15 through some voodoo that I can't replicate
-    with tkinter)
+- Main menu preview
+- Meta info preview
+- Progress bar preview
 - Rotating wifi icon (disconnected, wifi0, wifi1, wifi2, wifi3)
 - Rotating battery icon (charging, battery0, etc.)
+- Rotating progress bar (0%, 25%, 50%, 75%, 100%)
 - A working clock
 - At least 5 buttons to press (4 of which do nothing)
 - Poorly written internals
+- Randomly picked font family
 
 Things to do:
-- Add progress bar screen (and no, it's not going to move)
 - Add a screen that has two buttons (iunno, copy FBI updates screen)
 - Add a screen that has one button (install finished)
-- Add a screen that has item metadata (Titles)
-    - Add derp generators for titleID, media type, version, product code, region, and size.
-- Add a preview text colors screen (something that shows all the colors)
+- Add derp generators for titleID, media type, version, product code, region, and size.
 - Read/Write to textcolor.cfg
 - Color picker text colors
 - Translation support

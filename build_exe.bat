@@ -4,7 +4,7 @@ for %%f in (*.py) do (
 )
 :build_exe
 del /Q %script_name%.exe
-start /wait pyinstaller --onefile --icon=favicon.ico %script_name%.py
+start /wait pyinstaller --onefile --noconsole --icon=favicon.ico %script_name%.py
 rmdir /S /Q build
 del /Q %script_name%.spec
 move /-y dist\%script_name%.exe .\

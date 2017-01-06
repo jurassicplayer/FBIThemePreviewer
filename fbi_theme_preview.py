@@ -12,29 +12,44 @@ class Translations:
 
 class Configuration:
     def __init__(self):
-        self.theme_folder = "romfs/"
-        self.theme_title = "FBI Theme Previewer"
-        self.theme_desc = "A Shit Tier Stop-gap Solution"
-        self.theme_author = "Jurassicplayer"
-        self.theme_version = "2.4.6"
-        self.y_screen_distance = 0 #68
-        self.language = "en"
-        self.text="#000000"
-        self.nand="#0000FF"
-        self.sd="#00FF00"
-        self.gamecard="#FF0000"
-        self.dstitle="#82004B"
-        self.file="#000000"
-        self.directory="#0000FF"
-        self.enabled="#00FF00"
-        self.disabled="#0000FF"
-        self.installed="#00FF00"
-        self.notinstalled="#0000FF"
-        self.ticketinuse="#00FF00"
-        self.ticketnotinuse="#0000FF"
-    def load_ini(self):
-        print("Not implemented")
-    def save_ini(self):
+        self.programcfg = {
+            'theme_folder':  "romfs/",
+            'theme_title':   "FBI Theme Previewer",
+            'theme_desc':    "A Shit Tier Stop-gap Solution",
+            'theme_author':  "Jurassicplayer",
+            'theme_version': "2.4.6",
+            'screen_gap':    0, #68
+            'language':      "en"
+            }
+        self.textcolorcfg = {
+            'text':          "#000000",
+            'nand':          "#0000FF",
+            'sd':            "#00FF00",
+            'gamecard':      "#FF0000",
+            'dstitle':       "#82004B",
+            'file':          "#000000",
+            'directory':     "#0000FF",
+            'enabled':       "#00FF00",
+            'disabled':      "#0000FF",
+            'installed':     "#00FF00",
+            'notinstalled':  "#0000FF",
+            'ticketinuse':   "#00FF00",
+            'ticketnotinuse':"#0000FF"
+            }
+        self.load_cfg_from_file(self.programcfg['theme_folder']+"textcolor.cfg")
+    def load_cfg_from_file(self, filename):
+        try:
+            with open(filename) as f:
+                config_content = [line.rstrip('\n') for line in f]
+            for option in self.textcolorcfg:
+                for line in config_content:
+                    option_tmp = option+'='
+                    if option_tmp == line[:len(option_tmp)]:
+                        self.textcolorcfg[option[:]] = '#'+line.split("=")[1][-6:]
+        except:
+            tkMessageBox.showwarning("Open file", "Cannot open this file\n(%s)" % filename)
+            return
+    def save_cfg_to_file(self):
         print("Not implemented")
 
 class AppWindow(Tk):
@@ -58,9 +73,10 @@ class AppWindow(Tk):
         tl = getattr(sys.modules[__name__], "Translations")()
         self.title(tl.program_title)
         #Load configurations
-        config = getattr(sys.modules[__name__], "Configuration")()
-        self.dir = config.theme_folder
-        self.screen_gap = config.y_screen_distance
+        self.config = getattr(sys.modules[__name__], "Configuration")()
+        self.tc = self.config.textcolorcfg
+        self.pc = self.config.programcfg
+        self.dir = self.pc['theme_folder']
         #Shits and giggles number generator
         sd_size = random.choice((2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0))
         ctrnand_size = random.choice((943.0, 1240.0))
@@ -72,7 +88,6 @@ class AppWindow(Tk):
         
     def loadDynamicResources(self):
         #Load all images
-        
         self.i_battery_charging = PhotoImage(file=self.dir+"battery_charging.png")
         self.i_battery0 = PhotoImage(file=self.dir+"battery0.png")
         self.i_battery1 = PhotoImage(file=self.dir+"battery1.png")
@@ -115,7 +130,7 @@ class AppWindow(Tk):
         
     def createWidgets(self):
         self.frame = Frame(self)
-        self.canvas = Canvas(self.frame, width=400, height=480+self.screen_gap, bd=0, highlightthickness=0)
+        self.canvas = Canvas(self.frame, width=400, height=480+self.pc['screen_gap'], bd=0, highlightthickness=0)
         self.toolbar = Frame(self.frame)
         self.main_button = Button(self.toolbar, text="Main Menu", command=lambda: self.callButton("main_screen"))
         self.item_button = Button(self.toolbar, text="Meta Info", command=lambda: self.callButton("meta_screen"))
@@ -142,7 +157,7 @@ class AppWindow(Tk):
         self.font_normal = font.Font(family='Arial', size=-12, weight="bold")
         self.font_mini = font.Font(family='Arial', size=7, weight="bold")
         x_offset = 40
-        y_offset = 240+self.screen_gap
+        y_offset = 240+self.pc['screen_gap']
         #Top screen alignment
         self.top_screen_bg = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_bg)
         self.top_screen_top_bar = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_top_bar)
@@ -229,7 +244,6 @@ class AppWindow(Tk):
         self.canvas.itemconfig(self.progress_bar_content, image="")
         
     def updateCanvas(self, auto_loop=True):
-        config = getattr(sys.modules[__name__], "Configuration")()
         #self.loadDynamicResources()
         #Top screen update
         self.canvas.itemconfig(self.top_screen_bg, image=self.i_top_screen_bg)
@@ -263,63 +277,62 @@ class AppWindow(Tk):
         self.canvas.itemconfig(self.bottom_screen_bottom_bar_shadow, image=self.i_bottom_screen_bottom_bar_shadow)
         
         #Text update
-        self.canvas.itemconfig(self.version_number, fill=config.text, text = "Ver. {}".format(config.theme_version))
-        self.canvas.itemconfig(self.date_time, fill=config.text, text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
-        self.canvas.itemconfig(self.system_info, fill=config.text, text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
+        self.canvas.itemconfig(self.version_number, fill=self.tc['text'], text = "Ver. {}".format(self.pc['theme_version']))
+        self.canvas.itemconfig(self.date_time, fill=self.tc['text'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
+        self.canvas.itemconfig(self.system_info, fill=self.tc['text'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
         
         #Reload screen specific text and images
         if self.screen == "main_screen":
             self.canvas.itemconfig(self.logo, image=self.i_logo)
             self.canvas.itemconfig(self.select_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=config.text, text = "Main Menu")
-            self.canvas.itemconfig(self.bottom_screen_listing01, fill=config.text, text = "SD")
-            self.canvas.itemconfig(self.bottom_screen_listing02, fill=config.text, text = "CTR NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing03, fill=config.text, text = "TWL NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing04, fill=config.text, text = "TWL Photo")
-            self.canvas.itemconfig(self.bottom_screen_listing05, fill=config.text, text = "TWL Sound")
-            self.canvas.itemconfig(self.bottom_screen_listing06, fill=config.text, text = "Dump NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing07, fill=config.text, text = "Titles")
-            self.canvas.itemconfig(self.bottom_screen_listing08, fill=config.text, text = "Pending Titles")
-            self.canvas.itemconfig(self.bottom_screen_listing09, fill=config.text, text = "Tickets")
-            self.canvas.itemconfig(self.bottom_screen_listing10, fill=config.text, text = "Ext Save Data")
-            self.canvas.itemconfig(self.bottom_screen_listing11, fill=config.text, text = "System Save Data")
-            self.canvas.itemconfig(self.bottom_screen_listing12, fill=config.text, text = "TitleDB")
-            self.canvas.itemconfig(self.bottom_screen_listing13, fill=config.text, text = "Remote Install")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=config.text, text = "A: Select, START: Exit")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.tc['text'], text = "Main Menu")
+            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.tc['text'], text = "SD")
+            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.tc['text'], text = "CTR NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.tc['text'], text = "TWL NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.tc['text'], text = "TWL Photo")
+            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.tc['text'], text = "TWL Sound")
+            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.tc['text'], text = "Dump NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.tc['text'], text = "Titles")
+            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.tc['text'], text = "Pending Titles")
+            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.tc['text'], text = "Tickets")
+            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.tc['text'], text = "Ext Save Data")
+            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.tc['text'], text = "System Save Data")
+            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.tc['text'], text = "TitleDB")
+            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.tc['text'], text = "Remote Install")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.tc['text'], text = "A: Select, START: Exit")
         if self.screen == "meta_screen":
             self.canvas.itemconfig(self.meta_info_box, image=self.i_meta_info_box)
             self.canvas.itemconfig(self.meta_info_box_shadow, image=self.i_meta_info_box_shadow)
             self.canvas.itemconfig(self.meta_info_icon, image=self.i_meta_info_icon)
-            self.canvas.itemconfig(self.meta_info_box_info, fill=config.text, text = "{}\n{}\n{}".format(config.theme_title, config.theme_desc, config.theme_author))
-            self.canvas.itemconfig(self.meta_info_info, fill=config.text, text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
+            self.canvas.itemconfig(self.meta_info_box_info, fill=self.tc['text'], text = "{}\n{}\n{}".format(self.pc['theme_title'], self.pc['theme_desc'], self.pc['theme_author']))
+            self.canvas.itemconfig(self.meta_info_info, fill=self.tc['text'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
             self.canvas.itemconfig(self.select_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=config.text, text = "Textcolor.ini")
-            self.canvas.itemconfig(self.bottom_screen_listing01, fill=config.text, text = "Default")
-            self.canvas.itemconfig(self.bottom_screen_listing02, fill=config.nand, text = "NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing03, fill=config.sd, text = "SD")
-            self.canvas.itemconfig(self.bottom_screen_listing04, fill=config.gamecard, text = "Gamecard")
-            self.canvas.itemconfig(self.bottom_screen_listing05, fill=config.dstitle, text = "DS Title")
-            self.canvas.itemconfig(self.bottom_screen_listing06, fill=config.file, text = "File")
-            self.canvas.itemconfig(self.bottom_screen_listing07, fill=config.directory, text = "Directory")
-            self.canvas.itemconfig(self.bottom_screen_listing08, fill=config.enabled, text = "Enabled")
-            self.canvas.itemconfig(self.bottom_screen_listing09, fill=config.disabled, text = "Disabled")
-            self.canvas.itemconfig(self.bottom_screen_listing10, fill=config.installed, text = "Installed")
-            self.canvas.itemconfig(self.bottom_screen_listing11, fill=config.notinstalled, text = "Not installed")
-            self.canvas.itemconfig(self.bottom_screen_listing12, fill=config.ticketinuse, text = "Ticket in use")
-            self.canvas.itemconfig(self.bottom_screen_listing13, fill=config.ticketnotinuse, text = "Unused Ticket")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=config.text, text = "A: Select, B: Return, X: Refresh")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.tc['text'], text = "Textcolor.ini")
+            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.tc['text'], text = "Default")
+            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.tc['nand'], text = "NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.tc['sd'], text = "SD")
+            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.tc['gamecard'], text = "Gamecard")
+            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.tc['dstitle'], text = "DS Title")
+            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.tc['file'], text = "File")
+            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.tc['directory'], text = "Directory")
+            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.tc['enabled'], text = "Enabled")
+            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.tc['disabled'], text = "Disabled")
+            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.tc['installed'], text = "Installed")
+            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.tc['notinstalled'], text = "Not installed")
+            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.tc['ticketinuse'], text = "Ticket in use")
+            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.tc['ticketnotinuse'], text = "Unused Ticket")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.tc['text'], text = "A: Select, B: Return, X: Refresh")
         if self.screen == "progress_screen":
             self.canvas.itemconfig(self.progress_bar_bg, image=self.i_progress_bar_bg)
             self.canvas.itemconfig(self.progress_bar_content, image=progress_icon[self.wifi_counter])
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=config.text, text = "Installing From URL(s)")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=config.text, text = "Press B to cancel.")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.tc['text'], text = "Installing From URL(s)")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.tc['text'], text = "Press B to cancel.")
         
         if auto_loop:
             self.canvas.after(1000, self.updateCanvas)
     
-tl = Translations()
-config = Configuration()
+
 app = AppWindow()
 app.mainloop()

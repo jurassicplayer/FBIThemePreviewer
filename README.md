@@ -1,14 +1,14 @@
 # FBIThemePreviewer
 The shady stopgap solution to all of your FBI theming needs.
 Built on Python 3 and tkinter, FBITP is a currently completely user-unfriendly program, 
-with 4 buttons that do literally nothing. The exe file is literally for the dunces that
+with 2 buttons that do literally nothing. The exe file is literally for the dunces that
 don't have python already installed on their computers, so that can see what the program
 does.
 
-To actually use the previewer, you need to have the files in the romfs/ folder (or if you
-are using the .py script, you can set it...Configurations => theme_folder). There is no 
-user friendly checks that make sure the program doesn't break when unexpected things happen.
-So if you are missing a file, or have a typo, fix it.
+To actually use the previewer, you need to have the files in the romfs/ folder or set a 
+folder with the config file (theme_folder). There is no user friendly checks that make 
+sure the program doesn't break when unexpected things happen. So if you are missing a 
+file, or have a typo, fix it.
 
 Features:
 - Main menu preview
@@ -18,7 +18,8 @@ Features:
 - Rotating battery icon (charging, battery0, etc.)
 - Rotating progress bar (0%, 25%, 50%, 75%, 100%)
 - A working clock
-- At least 5 buttons to press (1 of which does nothing)
+- At least 5 buttons to press (2 of which does nothing)
+- Following selection overlay on left mouse press
 - Poorly written internals
 - Randomly picked font family
 - Reading from textcolor.cfg

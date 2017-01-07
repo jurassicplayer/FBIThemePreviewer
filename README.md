@@ -22,11 +22,18 @@ Features:
 - Poorly written internals
 - Randomly picked font family
 - Reading from textcolor.cfg
+- Instant write to textcolor.cfg on color change
 - Colorpicker for text colors (right click relevant text line in Meta Info screen)
 
 Things to do:
 - Add a screen that has two buttons (iunno, copy FBI updates screen)
 - Add a screen that has one button (install finished)
 - Add derp generators for titleID, media type, version, product code, region, and size.
-- Write to textcolor.cfg
 - Translation support
+
+Things to note:
+- This is a stop-gap solution, make no mistakes with anything, because there is no safety
+net to stop you from ruining your carefully picked colors with a simple misclick. Since
+currently this program writes to textcolor.cfg right after you change a color, it is very
+easy to lose the previous color you had, unless you have good memory.
+- If you are missing files, this program will probably crash.

@@ -1,10 +1,10 @@
 #!/usr/bin/python
 
 from tkinter import *
-from tkinter import font
+from tkinter import font, messagebox, colorchooser
 from PIL import Image, ImageTk
 from io import BytesIO
-import sys, datetime, random, string, time, base64
+import sys, datetime, random, string, time, base64, re
 
 class Translations:
     def __init__(self):
@@ -12,16 +12,14 @@ class Translations:
 
 class Configuration:
     def __init__(self):
-        self.programcfg = {
+        self.cfg = {
             'theme_folder':  "romfs/",
             'theme_title':   "FBI Theme Previewer",
             'theme_desc':    "A Shit Tier Stop-gap Solution",
             'theme_author':  "Jurassicplayer",
             'theme_version': "2.4.6",
-            'screen_gap':    0, #68
-            'language':      "en"
-            }
-        self.textcolorcfg = {
+            'screen_gap':    "0", #68
+            'language':      "en",
             'text':          "#000000",
             'nand':          "#0000FF",
             'sd':            "#00FF00",
@@ -36,19 +34,28 @@ class Configuration:
             'ticketinuse':   "#00FF00",
             'ticketnotinuse':"#0000FF"
             }
-        self.load_cfg_from_file(self.programcfg['theme_folder']+"textcolor.cfg")
+        self.load_cfg_from_file("config")
+        self.load_cfg_from_file(self.cfg['theme_folder']+"textcolor.cfg")
     def load_cfg_from_file(self, filename):
+        argbstring = re.compile(r'[a-fA-F0-9]{8}$')
         try:
             with open(filename) as f:
                 config_content = [line.rstrip('\n') for line in f]
-            for option in self.textcolorcfg:
-                for line in config_content:
-                    option_tmp = option+'='
-                    if option_tmp == line[:len(option_tmp)]:
-                        self.textcolorcfg[option[:]] = '#'+line.split("=")[1][-6:]
         except:
-            tkMessageBox.showwarning("Open file", "Cannot open this file\n(%s)" % filename)
+            if "textcolor.cfg" in filename:
+                messagebox.showwarning("Open file", "Cannot open this file\n(%s)" % filename)
+            elif "config" in filename: pass
             return
+        for option in self.cfg:
+            for line in config_content:
+                if option == line.split("=")[0]:
+                    if "textcolor.cfg" in filename:
+                        if argbstring.match(line.split("=")[1]):
+                            self.cfg.update({option : "#"+line.split("=")[1][2:8]})
+                        else:
+                            print("Malformed color: {}".format(line))
+                    elif "config" in filename:
+                        self.cfg.update({option : line.split("=")[1]})
     def save_cfg_to_file(self):
         print("Not implemented")
 
@@ -74,9 +81,8 @@ class AppWindow(Tk):
         self.title(tl.program_title)
         #Load configurations
         self.config = getattr(sys.modules[__name__], "Configuration")()
-        self.tc = self.config.textcolorcfg
-        self.pc = self.config.programcfg
-        self.dir = self.pc['theme_folder']
+        self.c = self.config.cfg
+        self.dir = self.c['theme_folder']
         #Shits and giggles number generator
         sd_size = random.choice((2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0))
         ctrnand_size = random.choice((943.0, 1240.0))
@@ -130,7 +136,7 @@ class AppWindow(Tk):
         
     def createWidgets(self):
         self.frame = Frame(self)
-        self.canvas = Canvas(self.frame, width=400, height=480+self.pc['screen_gap'], bd=0, highlightthickness=0)
+        self.canvas = Canvas(self.frame, width=400, height=480+int(self.c['screen_gap']), bd=0, highlightthickness=0)
         self.toolbar = Frame(self.frame)
         self.main_button = Button(self.toolbar, text="Main Menu", command=lambda: self.callButton("main_screen"))
         self.item_button = Button(self.toolbar, text="Meta Info", command=lambda: self.callButton("meta_screen"))
@@ -145,6 +151,9 @@ class AppWindow(Tk):
         self.big_button.pack(side=LEFT, fill=X)
         self.refresh_button.pack(side=LEFT, fill=X)
         self.toolbar.pack(side=TOP)
+        self.canvas.bind("<Button-1>", lambda event: self.cursorMove(event, 'B1'))
+        self.canvas.bind("<B1-Motion>", lambda event: self.cursorMove(event, 'B1'))
+        self.canvas.bind("<Button-3>", lambda event: self.cursorMove(event, 'B3'))
         self.canvas.pack()
         self.frame.pack()
     
@@ -152,36 +161,34 @@ class AppWindow(Tk):
         self.screen = screen
         self.clearCanvas()
         self.updateCanvas(auto_loop=False)
-    
+        
+    def cursorMove(self, event, button):
+        if event.x >= 40 and event.x <= 360 and event.y >= 20+240+int(self.c['screen_gap']) and event.y <= 220+240+int(self.c['screen_gap']):
+            y_pos_offset = 20+240+int(self.c['screen_gap']) #20px bottom_screen_top_bar, 240px top screen, screen_gap
+            y_pos_fixed = event.y-y_pos_offset
+            y_binned_index = int(y_pos_fixed/15)
+            self.canvas.coords(self.selection_overlay, (40, y_binned_index*15+y_pos_offset))
+            if self.screen == "meta_screen" and button == "B3":
+                color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
+                if y_binned_index < len(color_index):
+                    new_color = colorchooser.askcolor(initialcolor = self.c[color_index[y_binned_index]])[1]
+                    if new_color:
+                        self.c[color_index[y_binned_index]] = new_color
+                        self.updateCanvas(auto_loop=False)
+                    
     def drawCanvas(self):
         self.font_normal = font.Font(family='Arial', size=-12, weight="bold")
         self.font_mini = font.Font(family='Arial', size=7, weight="bold")
         x_offset = 40
-        y_offset = 240+self.pc['screen_gap']
-        #Top screen alignment
+        y_offset = 240+int(self.c['screen_gap'])
+                
+        #Layer 0 (Background images)
         self.top_screen_bg = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_bg)
-        self.top_screen_top_bar = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_top_bar)
-        self.top_screen_bottom_bar = self.canvas.create_image(0, 220, anchor = NW, image=self.i_top_screen_bottom_bar)
-        self.top_screen_top_bar_shadow = self.canvas.create_image(0, 20, anchor = NW, image=self.i_top_screen_top_bar_shadow)
-        self.top_screen_bottom_bar_shadow = self.canvas.create_image(0, 204, anchor = NW, image=self.i_top_screen_bottom_bar_shadow)
-        self.wifi = self.canvas.create_image(347, 2, anchor = NW, image = self.i_wifi3)
-        self.battery = self.canvas.create_image(371, 2, anchor = NW, image=self.i_battery_charging)
-    
-        #Bottom screen alignment
         self.bottom_screen_bg = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image=self.i_bottom_screen_bg)
-        self.bottom_screen_top_bar = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image=self.i_bottom_screen_top_bar)
-        self.bottom_screen_bottom_bar = self.canvas.create_image(0+x_offset, 220+y_offset, anchor = NW, image=self.i_bottom_screen_bottom_bar)
-        self.bottom_screen_top_bar_shadow = self.canvas.create_image(0+x_offset, 20+y_offset, anchor = NW, image=self.i_bottom_screen_top_bar_shadow)
-        self.bottom_screen_bottom_bar_shadow = self.canvas.create_image(0+x_offset, 204+y_offset, anchor = NW, image=self.i_bottom_screen_bottom_bar_shadow)
-    
-        #Text alignment
-        self.version_number = self.canvas.create_text(2, 10, anchor = W, font=self.font_normal, text = "")
-        self.date_time = self.canvas.create_text(200, 10, font=self.font_normal, text = "")
-        self.system_info = self.canvas.create_text(2, 230, anchor = W, font=self.font_mini, text = "")
         
-        #Main Menu Screen
+        #Layer 1 (Main information)
+        ###Main Menu Screen
         self.logo = self.canvas.create_image(200, 120, image="")
-        self.bottom_screen_top_bar_text = self.canvas.create_text(200, 10+y_offset, font=self.font_normal, text = "")
         line_height = 15
         line_offset = 20
         self.bottom_screen_listing01 = self.canvas.create_text(2+x_offset, line_height*0+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
@@ -197,24 +204,46 @@ class AppWindow(Tk):
         self.bottom_screen_listing11 = self.canvas.create_text(2+x_offset, line_height*10+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
         self.bottom_screen_listing12 = self.canvas.create_text(2+x_offset, line_height*11+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
         self.bottom_screen_listing13 = self.canvas.create_text(2+x_offset, line_height*12+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
-        self.bottom_screen_bottom_bar_text = self.canvas.create_text(200, 230+y_offset, font=self.font_normal, text = "")
-        self.select_overlay = self.canvas.create_image(0+x_offset, 20+y_offset, anchor = NW, image="")
+        self.bottom_screen_listing14 = self.canvas.create_text(2+x_offset, line_height*13+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
+        self.selection_overlay = self.canvas.create_image(0+x_offset, 20+y_offset, anchor = NW, image="")
         self.scroll_bar = self.canvas.create_image(0+320+x_offset, 20+y_offset, anchor = NE, image="")
-        
-        #Item Metadata Screen
+        ###Item Metadata Screen
         self.meta_info_box_shadow = self.canvas.create_image(24, 22, anchor = NW, image="")
         self.meta_info_box = self.canvas.create_image(40, 38, anchor = NW, image="")
         self.meta_info_icon = self.canvas.create_image(48, 46, anchor = NW, image="")
         self.meta_info_box_info = self.canvas.create_text(102, 48, anchor = NW, text="")
         self.meta_info_info = self.canvas.create_text(200, 111, anchor = N, justify='center', text="")
-        
-        #Progress Bar Screen
+        ###Progress Bar Screen
         self.progress_bar_bg = self.canvas.create_image(10+x_offset, 95+y_offset, anchor = NW, image="")
         self.progress_bar_content = self.canvas.create_image(20+x_offset, 105+y_offset, anchor = NW, image="")
+        
+        #Layer 2 (Top bars)
+        self.top_screen_top_bar = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_top_bar)
+        self.top_screen_bottom_bar = self.canvas.create_image(0, 220, anchor = NW, image=self.i_top_screen_bottom_bar)
+        self.top_screen_top_bar_shadow = self.canvas.create_image(0, 20, anchor = NW, image=self.i_top_screen_top_bar_shadow)
+        self.top_screen_bottom_bar_shadow = self.canvas.create_image(0, 204, anchor = NW, image=self.i_top_screen_bottom_bar_shadow)
+        #Layer 2 (Bottom bars)
+        self.bottom_screen_top_bar = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image=self.i_bottom_screen_top_bar)
+        self.bottom_screen_bottom_bar = self.canvas.create_image(0+x_offset, 220+y_offset, anchor = NW, image=self.i_bottom_screen_bottom_bar)
+        self.bottom_screen_top_bar_shadow = self.canvas.create_image(0+x_offset, 20+y_offset, anchor = NW, image=self.i_bottom_screen_top_bar_shadow)
+        self.bottom_screen_bottom_bar_shadow = self.canvas.create_image(0+x_offset, 204+y_offset, anchor = NW, image=self.i_bottom_screen_bottom_bar_shadow)
+        
+        #Layer 3 (Top bar overlays)
+        self.wifi = self.canvas.create_image(347, 2, anchor = NW, image = self.i_wifi3)
+        self.battery = self.canvas.create_image(371, 2, anchor = NW, image=self.i_battery_charging)
+        self.version_number = self.canvas.create_text(2, 10, anchor = W, font=self.font_normal, text = "")
+        self.date_time = self.canvas.create_text(200, 10, font=self.font_normal, text = "")
+        self.system_info = self.canvas.create_text(2, 230, anchor = W, font=self.font_mini, text = "")
+        #Layer 3 (Bottom bar overlays)
+        self.bottom_screen_top_bar_text = self.canvas.create_text(200, 10+y_offset, font=self.font_normal, text = "")
+        self.bottom_screen_bottom_bar_text = self.canvas.create_text(200, 230+y_offset, font=self.font_normal, text = "")
+        
+        
 
     def clearCanvas(self):
         #Remove all screen specific text and images
         self.canvas.itemconfig(self.bottom_screen_top_bar_text, text = "")
+        self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing01, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing02, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing03, text = "")
@@ -228,10 +257,10 @@ class AppWindow(Tk):
         self.canvas.itemconfig(self.bottom_screen_listing11, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing12, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing13, text = "")
-        self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, text = "")
+        self.canvas.itemconfig(self.bottom_screen_listing14, text = "")
         #main_screen
         self.canvas.itemconfig(self.logo, image="")
-        self.canvas.itemconfig(self.select_overlay, image="")
+        self.canvas.itemconfig(self.selection_overlay, image="")
         self.canvas.itemconfig(self.scroll_bar, image="")
         #meta_screen
         self.canvas.itemconfig(self.meta_info_box, image="")
@@ -277,62 +306,63 @@ class AppWindow(Tk):
         self.canvas.itemconfig(self.bottom_screen_bottom_bar_shadow, image=self.i_bottom_screen_bottom_bar_shadow)
         
         #Text update
-        self.canvas.itemconfig(self.version_number, fill=self.tc['text'], text = "Ver. {}".format(self.pc['theme_version']))
-        self.canvas.itemconfig(self.date_time, fill=self.tc['text'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
-        self.canvas.itemconfig(self.system_info, fill=self.tc['text'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
+        self.canvas.itemconfig(self.version_number, fill=self.c['text'], text = "Ver. {}".format(self.c['theme_version']))
+        self.canvas.itemconfig(self.date_time, fill=self.c['text'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
+        self.canvas.itemconfig(self.system_info, fill=self.c['text'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
         
         #Reload screen specific text and images
         if self.screen == "main_screen":
             self.canvas.itemconfig(self.logo, image=self.i_logo)
-            self.canvas.itemconfig(self.select_overlay, image=self.i_selection_overlay)
+            self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.tc['text'], text = "Main Menu")
-            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.tc['text'], text = "SD")
-            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.tc['text'], text = "CTR NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.tc['text'], text = "TWL NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.tc['text'], text = "TWL Photo")
-            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.tc['text'], text = "TWL Sound")
-            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.tc['text'], text = "Dump NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.tc['text'], text = "Titles")
-            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.tc['text'], text = "Pending Titles")
-            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.tc['text'], text = "Tickets")
-            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.tc['text'], text = "Ext Save Data")
-            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.tc['text'], text = "System Save Data")
-            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.tc['text'], text = "TitleDB")
-            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.tc['text'], text = "Remote Install")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.tc['text'], text = "A: Select, START: Exit")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text'], text = "Main Menu")
+            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['text'], text = "SD")
+            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['text'], text = "CTR NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.c['text'], text = "TWL NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.c['text'], text = "TWL Photo")
+            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.c['text'], text = "TWL Sound")
+            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.c['text'], text = "Dump NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.c['text'], text = "Titles")
+            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.c['text'], text = "Pending Titles")
+            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.c['text'], text = "Tickets")
+            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.c['text'], text = "Ext Save Data")
+            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.c['text'], text = "System Save Data")
+            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.c['text'], text = "TitleDB")
+            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.c['text'], text = "Remote Install")
+            self.canvas.itemconfig(self.bottom_screen_listing14, fill=self.c['text'], text = "Update")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text'], text = "A: Select, START: Exit")
         if self.screen == "meta_screen":
             self.canvas.itemconfig(self.meta_info_box, image=self.i_meta_info_box)
             self.canvas.itemconfig(self.meta_info_box_shadow, image=self.i_meta_info_box_shadow)
             self.canvas.itemconfig(self.meta_info_icon, image=self.i_meta_info_icon)
-            self.canvas.itemconfig(self.meta_info_box_info, fill=self.tc['text'], text = "{}\n{}\n{}".format(self.pc['theme_title'], self.pc['theme_desc'], self.pc['theme_author']))
-            self.canvas.itemconfig(self.meta_info_info, fill=self.tc['text'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
-            self.canvas.itemconfig(self.select_overlay, image=self.i_selection_overlay)
+            self.canvas.itemconfig(self.meta_info_box_info, fill=self.c['text'], text = "{}\n{}\n{}".format(self.c['theme_title'], self.c['theme_desc'], self.c['theme_author']))
+            self.canvas.itemconfig(self.meta_info_info, fill=self.c['text'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
+            self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.tc['text'], text = "Textcolor.ini")
-            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.tc['text'], text = "Default")
-            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.tc['nand'], text = "NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.tc['sd'], text = "SD")
-            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.tc['gamecard'], text = "Gamecard")
-            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.tc['dstitle'], text = "DS Title")
-            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.tc['file'], text = "File")
-            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.tc['directory'], text = "Directory")
-            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.tc['enabled'], text = "Enabled")
-            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.tc['disabled'], text = "Disabled")
-            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.tc['installed'], text = "Installed")
-            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.tc['notinstalled'], text = "Not installed")
-            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.tc['ticketinuse'], text = "Ticket in use")
-            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.tc['ticketnotinuse'], text = "Unused Ticket")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.tc['text'], text = "A: Select, B: Return, X: Refresh")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text'], text = "Textcolor.ini")
+            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['text'], text = "Default")
+            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['nand'], text = "NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.c['sd'], text = "SD")
+            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.c['gamecard'], text = "Gamecard")
+            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.c['dstitle'], text = "DS Title")
+            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.c['file'], text = "File")
+            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.c['directory'], text = "Directory")
+            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.c['enabled'], text = "Enabled")
+            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.c['disabled'], text = "Disabled")
+            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.c['installed'], text = "Installed")
+            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.c['notinstalled'], text = "Not installed")
+            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.c['ticketinuse'], text = "Ticket in use")
+            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.c['ticketnotinuse'], text = "Unused Ticket")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text'], text = "A: Select, B: Return, X: Refresh")
         if self.screen == "progress_screen":
             self.canvas.itemconfig(self.progress_bar_bg, image=self.i_progress_bar_bg)
             self.canvas.itemconfig(self.progress_bar_content, image=progress_icon[self.wifi_counter])
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.tc['text'], text = "Installing From URL(s)")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.tc['text'], text = "Press B to cancel.")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text'], text = "Installing From URL(s)")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text'], text = "Press B to cancel.")
         
         if auto_loop:
             self.canvas.after(1000, self.updateCanvas)
-    
 
+    
 app = AppWindow()
 app.mainloop()

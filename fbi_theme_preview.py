@@ -13,27 +13,29 @@ class Translations:
 class Configuration:
     def __init__(self):
         self.cfg = {
-            'theme_folder':  "romfs/",
-            'theme_title':   "FBI Theme Previewer",
-            'theme_desc':    "A Shit Tier Stop-gap Solution",
-            'theme_author':  "Jurassicplayer",
-            'theme_version': "2.4.6",
-            'screen_gap':    "0", #68
-            'language':      "en",
-            'text':          "#000000",
-            'nand':          "#0000FF",
-            'sd':            "#00FF00",
-            'gamecard':      "#FF0000",
-            'dstitle':       "#82004B",
-            'file':          "#000000",
-            'directory':     "#0000FF",
-            'enabled':       "#00FF00",
-            'disabled':      "#0000FF",
-            'installed':     "#00FF00",
-            'notinstalled':  "#0000FF",
-            'ticketinuse':   "#00FF00",
-            'ticketnotinuse':"#0000FF"
+            'theme_folder':   "romfs/",
+            'theme_title':    "FBI Theme Previewer",
+            'theme_desc':     "A Shit Tier Stop-gap Solution",
+            'theme_author':   "Jurassicplayer",
+            'theme_version':  "2.4.6",
+            'screen_gap':     "0", #68
+            'language':       "en",
+            'text':           {'rgb': "#000000", 'alpha': "FF"},
+            'nand':           {'rgb': "#FF0000", 'alpha': "FF"},
+            'sd':             {'rgb': "#00FF00", 'alpha': "FF"},
+            'gamecard':       {'rgb': "#0000FF", 'alpha': "FF"},
+            'dstitle':        {'rgb': "#4B0082", 'alpha': "FF"},
+            'file':           {'rgb': "#000000", 'alpha': "FF"},
+            'directory':      {'rgb': "#FF0000", 'alpha': "FF"},
+            'enabled':        {'rgb': "#00FF00", 'alpha': "FF"},
+            'disabled':       {'rgb': "#FF0000", 'alpha': "FF"},
+            'installed':      {'rgb': "#00FF00", 'alpha': "FF"},
+            'notinstalled':   {'rgb': "#FF0000", 'alpha': "FF"},
+            'ticketinuse':    {'rgb': "#00FF00", 'alpha': "FF"},
+            'ticketnotinuse': {'rgb': "#FF0000", 'alpha': "FF"},
             }
+        self.config_index = ['theme_folder', 'theme_title', 'theme_desc', 'theme_author', 'theme_version', 'screen_gap', 'language']
+        self.color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
         self.load_cfg_from_file("config")
         self.load_cfg_from_file(self.cfg['theme_folder']+"textcolor.cfg")
     def load_cfg_from_file(self, filename):
@@ -50,14 +52,26 @@ class Configuration:
             for line in config_content:
                 if option == line.split("=")[0]:
                     if "textcolor.cfg" in filename:
-                        if argbstring.match(line.split("=")[1]):
-                            self.cfg.update({option : "#"+line.split("=")[1][2:8]})
+                        option_value = line.split("=")[1]
+                        if argbstring.match(option_value):
+                            A = option_value[:2]
+                            RGB = swapRGBBGR(option_value[2:])
+                            self.cfg.update({option : {'rgb' : RGB, 'alpha' : A} })
                         else:
                             print("Malformed color: {}".format(line))
                     elif "config" in filename:
                         self.cfg.update({option : line.split("=")[1]})
-    def save_cfg_to_file(self):
-        print("Not implemented")
+    def save_cfg_to_file(self, type):
+        if type == "textcolor":
+            filename = self.cfg['theme_folder']+'textcolor.cfg'
+            with open(filename, 'w') as f:
+                for i in range (0, len(self.color_index)):
+                    f.write("{}={}{}\n".format(self.color_index[i], self.cfg[self.color_index[i]]['alpha'], swapRGBBGR(self.cfg[self.color_index[i]]['rgb'])[1:]))
+        elif type == "config":
+            filename = 'config'
+            with open(filename, 'w') as f:
+                for i in range (0, len(self.config_index)):
+                    f.write("{}={}\n".format(self.config_index[i], self.cfg[self.config_index[i]]))
 
 class AppWindow(Tk):
     def __init__(self, root=None):
@@ -169,11 +183,12 @@ class AppWindow(Tk):
             y_binned_index = int(y_pos_fixed/15)
             self.canvas.coords(self.selection_overlay, (40, y_binned_index*15+y_pos_offset))
             if self.screen == "meta_screen" and button == "B3":
-                color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
-                if y_binned_index < len(color_index):
-                    new_color = colorchooser.askcolor(initialcolor = self.c[color_index[y_binned_index]])[1]
+                #color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
+                if y_binned_index < len(self.config.color_index):
+                    new_color = colorchooser.askcolor(initialcolor = self.c[self.config.color_index[y_binned_index]]['rgb'])[1]
                     if new_color:
-                        self.c[color_index[y_binned_index]] = new_color
+                        self.c[self.config.color_index[y_binned_index]]['rgb'] = new_color
+                        self.config.save_cfg_to_file("textcolor")
                         self.updateCanvas(auto_loop=False)
                     
     def drawCanvas(self):
@@ -306,63 +321,71 @@ class AppWindow(Tk):
         self.canvas.itemconfig(self.bottom_screen_bottom_bar_shadow, image=self.i_bottom_screen_bottom_bar_shadow)
         
         #Text update
-        self.canvas.itemconfig(self.version_number, fill=self.c['text'], text = "Ver. {}".format(self.c['theme_version']))
-        self.canvas.itemconfig(self.date_time, fill=self.c['text'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
-        self.canvas.itemconfig(self.system_info, fill=self.c['text'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
+        self.canvas.itemconfig(self.version_number, fill=self.c['text']['rgb'], text = "Ver. {}".format(self.c['theme_version']))
+        self.canvas.itemconfig(self.date_time, fill=self.c['text']['rgb'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
+        self.canvas.itemconfig(self.system_info, fill=self.c['text']['rgb'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
         
         #Reload screen specific text and images
         if self.screen == "main_screen":
             self.canvas.itemconfig(self.logo, image=self.i_logo)
             self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text'], text = "Main Menu")
-            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['text'], text = "SD")
-            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['text'], text = "CTR NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.c['text'], text = "TWL NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.c['text'], text = "TWL Photo")
-            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.c['text'], text = "TWL Sound")
-            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.c['text'], text = "Dump NAND")
-            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.c['text'], text = "Titles")
-            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.c['text'], text = "Pending Titles")
-            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.c['text'], text = "Tickets")
-            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.c['text'], text = "Ext Save Data")
-            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.c['text'], text = "System Save Data")
-            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.c['text'], text = "TitleDB")
-            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.c['text'], text = "Remote Install")
-            self.canvas.itemconfig(self.bottom_screen_listing14, fill=self.c['text'], text = "Update")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text'], text = "A: Select, START: Exit")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Main Menu")
+            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['text']['rgb'], text = "SD")
+            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['text']['rgb'], text = "CTR NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.c['text']['rgb'], text = "TWL NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.c['text']['rgb'], text = "TWL Photo")
+            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.c['text']['rgb'], text = "TWL Sound")
+            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.c['text']['rgb'], text = "Dump NAND")
+            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.c['text']['rgb'], text = "Titles")
+            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.c['text']['rgb'], text = "Pending Titles")
+            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.c['text']['rgb'], text = "Tickets")
+            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.c['text']['rgb'], text = "Ext Save Data")
+            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.c['text']['rgb'], text = "System Save Data")
+            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.c['text']['rgb'], text = "TitleDB")
+            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.c['text']['rgb'], text = "Remote Install")
+            self.canvas.itemconfig(self.bottom_screen_listing14, fill=self.c['text']['rgb'], text = "Update")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'], text = "A: Select, START: Exit")
         if self.screen == "meta_screen":
             self.canvas.itemconfig(self.meta_info_box, image=self.i_meta_info_box)
             self.canvas.itemconfig(self.meta_info_box_shadow, image=self.i_meta_info_box_shadow)
             self.canvas.itemconfig(self.meta_info_icon, image=self.i_meta_info_icon)
-            self.canvas.itemconfig(self.meta_info_box_info, fill=self.c['text'], text = "{}\n{}\n{}".format(self.c['theme_title'], self.c['theme_desc'], self.c['theme_author']))
-            self.canvas.itemconfig(self.meta_info_info, fill=self.c['text'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
+            self.canvas.itemconfig(self.meta_info_box_info, fill=self.c['text']['rgb'], text = "{}\n{}\n{}".format(self.c['theme_title'], self.c['theme_desc'], self.c['theme_author']))
+            self.canvas.itemconfig(self.meta_info_info, fill=self.c['text']['rgb'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
             self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text'], text = "Textcolor.ini")
-            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['text'], text = "Default {}".format(self.c['text']))
-            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['nand'], text = "NAND {}".format(self.c['nand']))
-            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.c['sd'], text = "SD {}".format(self.c['sd']))
-            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.c['gamecard'], text = "Gamecard {}".format(self.c['gamecard']))
-            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.c['dstitle'], text = "DS Title {}".format(self.c['dstitle']))
-            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.c['file'], text = "File {}".format(self.c['file']))
-            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.c['directory'], text = "Directory {}".format(self.c['directory']))
-            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.c['enabled'], text = "Enabled {}".format(self.c['enabled']))
-            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.c['disabled'], text = "Disabled {}".format(self.c['disabled']))
-            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.c['installed'], text = "Installed {}".format(self.c['installed']))
-            self.canvas.itemconfig(self.bottom_screen_listing11, fill=self.c['notinstalled'], text = "Not installed {}".format(self.c['notinstalled']))
-            self.canvas.itemconfig(self.bottom_screen_listing12, fill=self.c['ticketinuse'], text = "Ticket in use {}".format(self.c['ticketinuse']))
-            self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.c['ticketnotinuse'], text = "Unused Ticket {}".format(self.c['ticketnotinuse']))
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text'], text = "A: Select, B: Return, X: Refresh")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text,    fill=self.c['text']['rgb'],           text = "Textcolor.ini")
+            self.canvas.itemconfig(self.bottom_screen_listing01,       fill=self.c['text']['rgb'],           text = "{}{}".format("Default".ljust(43),           swapRGBBGR(self.c['text']['rgb']).rjust(42))  )
+            self.canvas.itemconfig(self.bottom_screen_listing02,       fill=self.c['nand']['rgb'],           text = "{}{}".format("NAND".ljust(43),              swapRGBBGR(self.c['nand']['rgb']).rjust(42))  )
+            self.canvas.itemconfig(self.bottom_screen_listing03,       fill=self.c['sd']['rgb'],             text = "{}{}".format("SD".ljust(45),                swapRGBBGR(self.c['sd']['rgb']).rjust(44))  )
+            self.canvas.itemconfig(self.bottom_screen_listing04,       fill=self.c['gamecard']['rgb'],       text = "{}{}".format("Gamecard".ljust(40),          swapRGBBGR(self.c['gamecard']['rgb']).rjust(40))  )
+            self.canvas.itemconfig(self.bottom_screen_listing05,       fill=self.c['dstitle']['rgb'],        text = "{}{}".format("DS Title".ljust(43),          swapRGBBGR(self.c['dstitle']['rgb']).rjust(42))  )
+            self.canvas.itemconfig(self.bottom_screen_listing06,       fill=self.c['file']['rgb'],           text = "{}{}".format("File".ljust(45),              swapRGBBGR(self.c['file']['rgb']).rjust(44))  )
+            self.canvas.itemconfig(self.bottom_screen_listing07,       fill=self.c['directory']['rgb'],      text = "{}{}".format("Directory".ljust(42),         swapRGBBGR(self.c['directory']['rgb']).rjust(41))  )
+            self.canvas.itemconfig(self.bottom_screen_listing08,       fill=self.c['enabled']['rgb'],        text = "{}{}".format("Enabled".ljust(42),           swapRGBBGR(self.c['enabled']['rgb']).rjust(41))  )
+            self.canvas.itemconfig(self.bottom_screen_listing09,       fill=self.c['disabled']['rgb'],       text = "{}{}".format("Disabled".ljust(42),          swapRGBBGR(self.c['disabled']['rgb']).rjust(41))  )
+            self.canvas.itemconfig(self.bottom_screen_listing10,       fill=self.c['installed']['rgb'],      text = "{}{}".format("Installed".ljust(42),         swapRGBBGR(self.c['installed']['rgb']).rjust(42))  )
+            self.canvas.itemconfig(self.bottom_screen_listing11,       fill=self.c['notinstalled']['rgb'],   text = "{}{}".format("Not installed".ljust(41),     swapRGBBGR(self.c['notinstalled']['rgb']).rjust(40))  )
+            self.canvas.itemconfig(self.bottom_screen_listing12,       fill=self.c['ticketinuse']['rgb'],    text = "{}{}".format("Ticket in use".ljust(40),     swapRGBBGR(self.c['ticketinuse']['rgb']).rjust(40))  )
+            self.canvas.itemconfig(self.bottom_screen_listing13,       fill=self.c['ticketnotinuse']['rgb'], text = "{}{}".format("Ticket not in use".ljust(39), swapRGBBGR(self.c['ticketnotinuse']['rgb']).rjust(38))  )
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'],           text = "A: Select, B: Return, X: Refresh")
         if self.screen == "progress_screen":
             self.canvas.itemconfig(self.progress_bar_bg, image=self.i_progress_bar_bg)
             self.canvas.itemconfig(self.progress_bar_content, image=progress_icon[self.wifi_counter])
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text'], text = "Installing From URL(s)")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text'], text = "Press B to cancel.")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Installing From URL(s)")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'], text = "Press B to cancel.")
         
         if auto_loop:
             self.canvas.after(1000, self.updateCanvas)
 
-    
+def swapRGBBGR(color):
+    if len(color) == 7:
+        color = color[1:]
+    color_list = [color[i:i+2] for i in range(0, len(color), 2)]
+    color1 = color_list[0]
+    color2 = color_list[1]
+    color3 = color_list[2]
+    return "#{}{}{}".format(color3,color2,color1).upper()
+
 app = AppWindow()
 app.mainloop()

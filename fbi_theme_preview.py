@@ -183,7 +183,6 @@ class AppWindow(Tk):
             y_binned_index = int(y_pos_fixed/15)
             self.canvas.coords(self.selection_overlay, (40, y_binned_index*15+y_pos_offset))
             if self.screen == "meta_screen" and button == "B3":
-                #color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
                 if y_binned_index < len(self.config.color_index):
                     new_color = colorchooser.askcolor(initialcolor = self.c[self.config.color_index[y_binned_index]]['rgb'])[1]
                     if new_color:
@@ -354,7 +353,7 @@ class AppWindow(Tk):
             self.canvas.itemconfig(self.meta_info_info, fill=self.c['text']['rgb'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
             self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
             self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text,    fill=self.c['text']['rgb'],           text = "Textcolor.ini")
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text,    fill=self.c['text']['rgb'],           text = "Textcolor.cfg (#BGR)")
             self.canvas.itemconfig(self.bottom_screen_listing01,       fill=self.c['text']['rgb'],           text = "{}{}".format("Default".ljust(43),           swapRGBBGR(self.c['text']['rgb']).rjust(42))  )
             self.canvas.itemconfig(self.bottom_screen_listing02,       fill=self.c['nand']['rgb'],           text = "{}{}".format("NAND".ljust(43),              swapRGBBGR(self.c['nand']['rgb']).rjust(42))  )
             self.canvas.itemconfig(self.bottom_screen_listing03,       fill=self.c['sd']['rgb'],             text = "{}{}".format("SD".ljust(45),                swapRGBBGR(self.c['sd']['rgb']).rjust(44))  )

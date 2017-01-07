@@ -21,11 +21,12 @@ Features:
 - At least 5 buttons to press (4 of which do nothing)
 - Poorly written internals
 - Randomly picked font family
+- Reading from textcolor.cfg
+- Colorpicker for text colors (right click relevant text line in Meta Info screen)
 
 Things to do:
 - Add a screen that has two buttons (iunno, copy FBI updates screen)
 - Add a screen that has one button (install finished)
 - Add derp generators for titleID, media type, version, product code, region, and size.
-- Read/Write to textcolor.cfg
-- Color picker text colors
+- Write to textcolor.cfg
 - Translation support

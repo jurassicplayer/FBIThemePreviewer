@@ -18,7 +18,7 @@ Features:
 - Rotating battery icon (charging, battery0, etc.)
 - Rotating progress bar (0%, 25%, 50%, 75%, 100%)
 - A working clock
-- At least 5 buttons to press (4 of which do nothing)
+- At least 5 buttons to press (1 of which does nothing)
 - Poorly written internals
 - Randomly picked font family
 - Reading from textcolor.cfg

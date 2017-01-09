@@ -2,9 +2,11 @@
 
 from tkinter import *
 from tkinter import font, messagebox, colorchooser
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 from PIL import Image, ImageTk
 from io import BytesIO
-import sys, datetime, random, string, time, base64, re
+import os, sys, datetime, random, string, time, base64, re
 
 class Translations:
     def __init__(self):
@@ -73,21 +75,42 @@ class Configuration:
                 for i in range (0, len(self.config_index)):
                     f.write("{}={}\n".format(self.config_index[i], self.cfg[self.config_index[i]]))
 
+class FSEventHandler(FileSystemEventHandler):
+    def __init__(self, appwindow):
+        self.appwindow = appwindow
+    def process(self, event):
+        """
+        event.event_type 
+            'modified' | 'created' | 'moved' | 'deleted'
+        event.is_directory
+            True | False
+        event.src_path
+            path/to/observed/file
+        """
+        self.appwindow.loadDynamicResources(os.path.splitext(os.path.basename(event.src_path))[0])
+        self.appwindow.updateCanvas()
+    def on_created(self, event):
+        self.process(event)
+    def on_modified(self, event):
+        self.process(event)
+        
 class AppWindow(Tk):
     def __init__(self, root=None):
         Tk.__init__(self, root)
         self.icon_base64 ="""R0lGODlhIAAgAOfYAKYAAKcAAKgAAKUBAakAAKoAAKsAAKgBAawAAK0AAK4AAKwBAa0BAa4BAa0C\nAq4DA64EBK4FBa8ICKwMDLALC60MDLEQD7IRELETE7IUFLMUFLIWFrMWFrMYF7QYGLQZGbUZGbYb\nG7UcHLYeHbYfH7YhILciIrUlJbYlJbcnJrgoJ7krKrksK7otLbouLbsxMbsyMbo0NLk1NL05OL47\nOlZXV748O1dYV7o+PcBCQbtEQ71EQ75EQ79EQ8BEQ8BERMFGRcJKSWJkY8JKSmNkZL5MS8NNTMNO\nTcRPTsRQT8RRUMVUU8VVVMdaWchdXMVfXshfXsViYcZiYcdiYchiYcliYcZjYsdjYcdjYshjYslj\nYcljYspjYcpjYspkY8tpZ8tracxsa8xubc1ubcl2ds51c891c892ddB5d8+BgNCBgNGBgNKBgNKC\ngNaBgdSGhdSJh9SJiNOLitWLitSMi9WMitWMi9aMi9ONjdWNi9aNi9eNi9eOi9mOi9iQjtiUktiW\nlNmYltmamNmbmdqcmq6urNyjodimpbGxrtmnp9iop9mop9qop9uoqN2optqpqNqpqdupqNupqdyp\nqNypqduqqdyqqdyqqt2qqd6qqN2rqd6rqd6rqt+rqd+rqt6sqd6sqt+squCsqt+tqeCtqt2urLq6\nuOCwrru7ueCysNO3ttS4uOG1stO5udW5uNW5uda5uNa6uNa6ude6uNe6ucPAv9e7udi7ueK5ttm8\nueK6t9e9usXCwNq9uePCweXDwebGxObHxNnPzdrPzOnQzufS0erU0erW0+vZ1uza1+3f3O7i4O7j\n4O/k4e/n5PDn5PHr6PHt6vHu6/Lv7PLw7fLw7vLx7vPy7///////////////////////////////\n////////////////////////////////////////////////////////////////////////////\n/////////////////////////////////////////////////////yH5BAEKAP8ALAAAAAAgACAA\nAAj+AP8JHEiwoMGDBlH98sOHD508dujs2WOnDh07dvrokaMH4508evD4MjUQERoFCRIoICCAgIEE\nCGIiMFAAAcyZBmQiIECmkEBjCxpAYbNGTRo1bdi0abOmKdKlS5u2UfNkwIFiAi8hMHKtq9evzaqU\ncALtq9kiAioJZGSgi9mvyl6kTGDj2NuuUQhEWksgy91r1jZ1mJugRbC31qToXVsAy19kySzMlZBA\nBbO3UwgsEjipr7W7y541mTsiRIIgn79mfiSQUl9qfzNFIJzSgzSzUwQoEhipQBbYbw09MDH3iyNi\n094q3vwvEQEsyd8SQuAmpYrUd/Pu/ffJN3CzzCD+gEhp5i9eAKAEdkrg9u+SuWHMX5uCIP0/Twm2\n/E11YS4L7G9RkQAnAnGiQHtmVQMDbYOYpxiB/4iCAIJm/ZJBAgwk4MAP35mlhQGhCBRKfuaVgUAc\nW8nHRQIh/kMJAvr9BQgEznBQhXwfYiJQIwBYYV4gIlwDhBfyZbZdJAI49tcZK1wDRg7yKQZJa32Z\nB4UL18xBQTQOEmAJZ8+Zx8QM1+iCADBdSsJZkuYpkcQ10WhgiHlGCiRJAD7+hcQYXUEBh3lUGKCJ\nQKOw+dcRb3T1hxiAGkCKQKQIcIV5PwTSFStD0InAo/+UEoAMt701DQmCdIXLBwB6JU0MCJwi0DBs\nExRwAg898ODDrT3QgMAGO/CQAgI46NArD8T2gEIBFQgjEBGHYFBAAQQEIIABOSVgAEsFUEsAAAR0\nSwC0BWDAiBAD3cDLLr3kosoqrrxiyy2zzOKKK7fkAksssdAiyyuyyNJKLTUgJPDABwUEADs="""
         img = PhotoImage(data=self.icon_base64)
         self.call('wm', 'iconphoto', self._w, img)
+        self.resizable(width=False, height=False)
         self.screen = ""
-        self.loadStaticResources()
-        self.loadDynamicResources()
+        self.loadStaticResources()        
         self.createWidgets()
-        self.drawCanvas()
-        self.screen = "main_screen"
+        self.createCanvas()
+        observer = Observer()
+        observer.schedule(FSEventHandler(self), self.dir, recursive=False)
+        observer.start()
         self.wifi_counter = 0
         self.battery_counter = 0
-        self.updateCanvas()
+        self.updateCanvas(auto_loop=True)
     
     def loadStaticResources(self):
         #Load translations
@@ -105,65 +128,77 @@ class AppWindow(Tk):
         self.twlnand_ex = 128.0 + (random.randrange(0,9)/10)
         self.twlphoto_ex = 32.0 + (random.randrange(0,9)/10)
         self.i_meta_info_icon = ImageTk.PhotoImage(Image.open(BytesIO(base64.b64decode(self.icon_base64))).resize((48,48)))
+        self.screen = "main_screen"
+        self.i = {
+            'battery_charging': '',
+            'battery0': '',
+            'battery1': '',
+            'battery2': '',
+            'battery3': '',
+            'battery4': '',
+            'battery5': '',
+            'bottom_screen_bg': '',
+            'bottom_screen_bottom_bar': '',
+            'bottom_screen_bottom_bar_shadow': '',
+            'bottom_screen_top_bar': '',
+            'bottom_screen_top_bar_shadow': '',
+            'button_large': '',
+            'button_small': '',
+            'logo': '',
+            'meta_info_box': '',
+            'meta_info_box_shadow': '',
+            'progress_bar_bg': '',
+            'progress_bar_content': '',
+            'progress_bar_content_25': '',
+            'progress_bar_content_50': '',
+            'progress_bar_content_75': '',
+            'scroll_bar': '',
+            'selection_overlay': '',
+            'top_screen_bg': '',
+            'top_screen_bottom_bar': '',
+            'top_screen_bottom_bar_shadow': '',
+            'top_screen_top_bar': '',
+            'top_screen_top_bar_shadow': '',
+            'wifi_disconnected': '',
+            'wifi0': '',
+            'wifi1': '',
+            'wifi2': '',
+            'wifi3': ''
+            }
+        failed_to_load = []
+        for key in self.i:
+            failed_filename = self.loadDynamicResources(key)
+            if failed_filename:
+                failed_to_load.append("{}.png".format(failed_filename))
+        if failed_to_load:
+            failed_to_load.sort()
+            messagebox.showwarning("Error", 'Failed to load {}/{} image(s):\n{}'.format(len(failed_to_load), len(self.i)-3, "\n".join(failed_to_load)))
         
-    def loadDynamicResources(self):
-        #Load all images
-        self.i_battery_charging = PhotoImage(file=self.dir+"battery_charging.png")
-        self.i_battery0 = PhotoImage(file=self.dir+"battery0.png")
-        self.i_battery1 = PhotoImage(file=self.dir+"battery1.png")
-        self.i_battery2 = PhotoImage(file=self.dir+"battery2.png")
-        self.i_battery3 = PhotoImage(file=self.dir+"battery3.png")
-        self.i_battery4 = PhotoImage(file=self.dir+"battery4.png")
-        self.i_battery5 = PhotoImage(file=self.dir+"battery5.png")
-        self.i_bottom_screen_bg = PhotoImage(file=self.dir+"bottom_screen_bg.png")
-        self.i_bottom_screen_bottom_bar = PhotoImage(file=self.dir+"bottom_screen_bottom_bar.png")
-        self.i_bottom_screen_bottom_bar_shadow = PhotoImage(file=self.dir+"bottom_screen_bottom_bar_shadow.png")
-        self.i_bottom_screen_top_bar = PhotoImage(file=self.dir+"bottom_screen_top_bar.png")
-        self.i_bottom_screen_top_bar_shadow = PhotoImage(file=self.dir+"bottom_screen_top_bar_shadow.png")
-        self.i_button_large = PhotoImage(file=self.dir+"button_large.png")
-        self.i_button_small = PhotoImage(file=self.dir+"button_small.png")
-        self.i_logo = PhotoImage(file=self.dir+"logo.png")
-        self.i_meta_info_box = PhotoImage(file=self.dir+"meta_info_box.png")
-        self.i_meta_info_box_shadow = PhotoImage(file=self.dir+"meta_info_box_shadow.png")
-        self.i_progress_bar_bg = PhotoImage(file=self.dir+"progress_bar_bg.png")
-        tmp_image = Image.open(self.dir+"progress_bar_content.png")
-        self.i_progress_bar_content = ImageTk.PhotoImage(tmp_image)
-        self.i_progress_bar_0 = ImageTk.PhotoImage(tmp_image.crop((0, 0, 0, 30)))
-        self.i_progress_bar_25 = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.25), 30)))
-        self.i_progress_bar_50 = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.50), 30)))
-        self.i_progress_bar_75 = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.75), 30)))
-        self.i_scroll_bar = PhotoImage(file=self.dir+"scroll_bar.png")
-        ##
-        tmp_image = Image.open(self.dir+"selection_overlay.png").resize((320, 15), Image.ANTIALIAS)
-        self.i_selection_overlay = ImageTk.PhotoImage(tmp_image)
-        self.i_progress_bar_bg = PhotoImage(file=self.dir+"progress_bar_bg.png")
-        self.i_top_screen_bg = PhotoImage(file=self.dir+"top_screen_bg.png")
-        self.i_top_screen_bottom_bar = PhotoImage(file=self.dir+"top_screen_bottom_bar.png")
-        self.i_top_screen_bottom_bar_shadow = PhotoImage(file=self.dir+"top_screen_bottom_bar_shadow.png")
-        self.i_top_screen_top_bar = PhotoImage(file=self.dir+"top_screen_top_bar.png")
-        self.i_top_screen_top_bar_shadow = PhotoImage(file=self.dir+"top_screen_top_bar_shadow.png")
-        self.i_wifi_disconnected = PhotoImage(file=self.dir+"wifi_disconnected.png")
-        self.i_wifi0 = PhotoImage(file=self.dir+"wifi0.png")
-        self.i_wifi1 = PhotoImage(file=self.dir+"wifi1.png")
-        self.i_wifi2 = PhotoImage(file=self.dir+"wifi2.png")
-        self.i_wifi3 = PhotoImage(file=self.dir+"wifi3.png")
+    def loadDynamicResources(self, filename):
+        try:
+            if filename in ['progress_bar_content_25', 'progress_bar_content_50', 'progress_bar_content_75']: return
+            elif filename == 'progress_bar_content' or filename == 'selection_overlay':
+                tmp_image = Image.open("{}{}.png".format(self.dir, filename))
+                if filename == 'selection_overlay':
+                    tmp_image = tmp_image.resize((320, 15), Image.ANTIALIAS)
+                if filename == 'progress_bar_content':
+                    self.i['{}_25'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.25), 30)))
+                    self.i['{}_50'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.50), 30)))
+                    self.i['{}_75'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.75), 30)))
+                self.i[filename] = ImageTk.PhotoImage(tmp_image)
+            else:
+                self.i[filename] = PhotoImage(file="{}{}.png".format(self.dir, filename))
+        except Exception as e:
+            return filename
         
     def createWidgets(self):
         self.frame = Frame(self)
         self.canvas = Canvas(self.frame, width=400, height=480+int(self.c['screen_gap']), bd=0, highlightthickness=0)
         self.toolbar = Frame(self.frame)
-        self.main_button = Button(self.toolbar, text="Main Menu", command=lambda: self.callButton("main_screen"))
-        self.item_button = Button(self.toolbar, text="Meta Info", command=lambda: self.callButton("meta_screen"))
-        self.progress_button = Button(self.toolbar, text="Progress Bar", command=lambda: self.callButton("progress_screen"))
-        self.little_buttons = Button(self.toolbar, text="Little Btn", command=lambda: self.callButton("little_btn_screen"))
-        self.big_button = Button(self.toolbar, text="Big Btn", command=lambda: self.callButton("big_btn_screen"))
-        self.refresh_button = Button(self.toolbar, text="Refresh", command=self.loadDynamicResources)
+        self.main_button = Button(self.toolbar, text="Preview", command=lambda: self.changeScreen("main_screen"))
+        self.item_button = Button(self.toolbar, text="Text Cfg", command=lambda: self.changeScreen("meta_screen"))
         self.main_button.pack(side=LEFT, fill=X)
         self.item_button.pack(side=LEFT, fill=X)
-        self.progress_button.pack(side=LEFT, fill=X)
-        self.little_buttons.pack(side=LEFT, fill=X)
-        self.big_button.pack(side=LEFT, fill=X)
-        self.refresh_button.pack(side=LEFT, fill=X)
         self.toolbar.pack(side=TOP)
         self.canvas.bind("<Button-1>", lambda event: self.cursorMove(event, 'B1'))
         self.canvas.bind("<B1-Motion>", lambda event: self.cursorMove(event, 'B1'))
@@ -171,40 +206,72 @@ class AppWindow(Tk):
         self.canvas.pack()
         self.frame.pack()
     
-    def callButton(self, screen):
+    def changeScreen(self, screen):
         self.screen = screen
         self.clearCanvas()
-        self.updateCanvas(auto_loop=False)
+        self.updateCanvas()
         
     def cursorMove(self, event, button):
         if event.x >= 40 and event.x <= 360 and event.y >= 20+240+int(self.c['screen_gap']) and event.y <= 220+240+int(self.c['screen_gap']):
             y_pos_offset = 20+240+int(self.c['screen_gap']) #20px bottom_screen_top_bar, 240px top screen, screen_gap
             y_pos_fixed = event.y-y_pos_offset
-            y_binned_index = int(y_pos_fixed/15)
-            self.canvas.coords(self.selection_overlay, (40, y_binned_index*15+y_pos_offset))
+            y_pos_binned = int(y_pos_fixed/15)
+            self.canvas.coords(self.selection_overlay, (40, y_pos_binned*15+y_pos_offset))
             if self.screen == "meta_screen" and button == "B3":
-                if y_binned_index < len(self.config.color_index):
-                    new_color = colorchooser.askcolor(initialcolor = self.c[self.config.color_index[y_binned_index]]['rgb'])[1]
+                if y_pos_binned < len(self.config.color_index):
+                    new_color = colorchooser.askcolor(initialcolor = self.c[self.config.color_index[y_pos_binned]]['rgb'])[1]
                     if new_color:
-                        self.c[self.config.color_index[y_binned_index]]['rgb'] = new_color
+                        self.c[self.config.color_index[y_pos_binned]]['rgb'] = new_color
                         self.config.save_cfg_to_file("textcolor")
-                        self.updateCanvas(auto_loop=False)
+                        self.updateCanvas()
+            if self.screen in ["sd_screen", "nand_screen", "remote_install_screen", "update_screen"] and button == "B3":
+                self.changeScreen("main_screen")
+            elif self.screen == "main_screen" and button == "B3":
+                if y_pos_binned == 0:
+                    self.changeScreen("sd_screen")
+                if y_pos_binned == 1:
+                    self.changeScreen("nand_screen")
+                if y_pos_binned == 2:
+                    self.changeScreen("nand_screen")
+                if y_pos_binned == 3:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: TWL Photo')
+                if y_pos_binned == 4:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: TWL Sound')
+                if y_pos_binned == 5:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: Dump NAND')
+                if y_pos_binned == 6:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: Titles')
+                if y_pos_binned == 7:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: Pending Titles')
+                if y_pos_binned == 8:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: Tickets')
+                if y_pos_binned == 9:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: Ext Save Data')
+                if y_pos_binned == 10:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: System Save Data')
+                if y_pos_binned == 11:
+                    messagebox.showwarning('Not Implemented Yet', 'Preview not implemented yet: TitleDB')
+                if y_pos_binned == 12:
+                    self.changeScreen("remote_install_screen")
+                if y_pos_binned == 13:
+                    self.changeScreen("update_screen")
                     
-    def drawCanvas(self):
+    def createCanvas(self):
         self.font_normal = font.Font(family='Arial', size=-12, weight="bold")
         self.font_mini = font.Font(family='Arial', size=7, weight="bold")
         x_offset = 40
         y_offset = 240+int(self.c['screen_gap'])
                 
         #Layer 0 (Background images)
-        self.top_screen_bg = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_bg)
-        self.bottom_screen_bg = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image=self.i_bottom_screen_bg)
+        self.top_screen_bg = self.canvas.create_image(0, 0, anchor = NW, image="")
+        self.bottom_screen_bg = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image="")
         
         #Layer 1 (Main information)
         ###Main Menu Screen
         self.logo = self.canvas.create_image(200, 120, image="")
         line_height = 15
         line_offset = 20
+        self.bottom_screen_justified_text = self.canvas.create_text(160+x_offset, 100+line_offset+y_offset, justify='center', font=self.font_normal, text = "")
         self.bottom_screen_listing01 = self.canvas.create_text(2+x_offset, line_height*0+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
         self.bottom_screen_listing02 = self.canvas.create_text(2+x_offset, line_height*1+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
         self.bottom_screen_listing03 = self.canvas.create_text(2+x_offset, line_height*2+line_offset+y_offset, anchor = NW, font=self.font_normal, text = "")
@@ -230,34 +297,39 @@ class AppWindow(Tk):
         ###Progress Bar Screen
         self.progress_bar_bg = self.canvas.create_image(10+x_offset, 95+y_offset, anchor = NW, image="")
         self.progress_bar_content = self.canvas.create_image(20+x_offset, 105+y_offset, anchor = NW, image="")
+        ###Button Screen
+        self.button_large = self.canvas.create_image(10+x_offset, 155+y_offset, anchor = NW, image="")
+        self.button_small_yes = self.canvas.create_image(10+x_offset, 155+y_offset, anchor = NW, image="")
+        self.button_small_no = self.canvas.create_image(165+x_offset, 155+y_offset, anchor = NW, image="")
+        self.button_text = self.canvas.create_text(200, 184+y_offset, text="")
         
         #Layer 2 (Top bars)
-        self.top_screen_top_bar = self.canvas.create_image(0, 0, anchor = NW, image=self.i_top_screen_top_bar)
-        self.top_screen_bottom_bar = self.canvas.create_image(0, 220, anchor = NW, image=self.i_top_screen_bottom_bar)
-        self.top_screen_top_bar_shadow = self.canvas.create_image(0, 20, anchor = NW, image=self.i_top_screen_top_bar_shadow)
-        self.top_screen_bottom_bar_shadow = self.canvas.create_image(0, 204, anchor = NW, image=self.i_top_screen_bottom_bar_shadow)
+        self.top_screen_top_bar = self.canvas.create_image(0, 0, anchor = NW, image="")
+        self.top_screen_bottom_bar = self.canvas.create_image(0, 220, anchor = NW, image="")
+        self.top_screen_top_bar_shadow = self.canvas.create_image(0, 20, anchor = NW, image="")
+        self.top_screen_bottom_bar_shadow = self.canvas.create_image(0, 204, anchor = NW, image="")
         #Layer 2 (Bottom bars)
-        self.bottom_screen_top_bar = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image=self.i_bottom_screen_top_bar)
-        self.bottom_screen_bottom_bar = self.canvas.create_image(0+x_offset, 220+y_offset, anchor = NW, image=self.i_bottom_screen_bottom_bar)
-        self.bottom_screen_top_bar_shadow = self.canvas.create_image(0+x_offset, 20+y_offset, anchor = NW, image=self.i_bottom_screen_top_bar_shadow)
-        self.bottom_screen_bottom_bar_shadow = self.canvas.create_image(0+x_offset, 204+y_offset, anchor = NW, image=self.i_bottom_screen_bottom_bar_shadow)
+        self.bottom_screen_top_bar = self.canvas.create_image(0+x_offset, 0+y_offset, anchor = NW, image="")
+        self.bottom_screen_bottom_bar = self.canvas.create_image(0+x_offset, 220+y_offset, anchor = NW, image="")
+        self.bottom_screen_top_bar_shadow = self.canvas.create_image(0+x_offset, 20+y_offset, anchor = NW, image="")
+        self.bottom_screen_bottom_bar_shadow = self.canvas.create_image(0+x_offset, 204+y_offset, anchor = NW, image="")
         
         #Layer 3 (Top bar overlays)
-        self.wifi = self.canvas.create_image(347, 2, anchor = NW, image = self.i_wifi3)
-        self.battery = self.canvas.create_image(371, 2, anchor = NW, image=self.i_battery_charging)
+        self.wifi = self.canvas.create_image(347, 2, anchor = NW, image="")
+        self.battery = self.canvas.create_image(371, 2, anchor = NW, image="")
         self.version_number = self.canvas.create_text(2, 10, anchor = W, font=self.font_normal, text = "")
         self.date_time = self.canvas.create_text(200, 10, font=self.font_normal, text = "")
         self.system_info = self.canvas.create_text(2, 230, anchor = W, font=self.font_mini, text = "")
         #Layer 3 (Bottom bar overlays)
         self.bottom_screen_top_bar_text = self.canvas.create_text(200, 10+y_offset, font=self.font_normal, text = "")
         self.bottom_screen_bottom_bar_text = self.canvas.create_text(200, 230+y_offset, font=self.font_normal, text = "")
-        
-        
+
 
     def clearCanvas(self):
         #Remove all screen specific text and images
         self.canvas.itemconfig(self.bottom_screen_top_bar_text, text = "")
         self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, text = "")
+        self.canvas.itemconfig(self.bottom_screen_justified_text, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing01, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing02, text = "")
         self.canvas.itemconfig(self.bottom_screen_listing03, text = "")
@@ -282,53 +354,39 @@ class AppWindow(Tk):
         self.canvas.itemconfig(self.meta_info_icon, image="")
         self.canvas.itemconfig(self.meta_info_box_info, text = "")
         self.canvas.itemconfig(self.meta_info_info, text = "")
-        #progress_screen
+        #remote_install_screen
         self.canvas.itemconfig(self.progress_bar_bg, image="")
         self.canvas.itemconfig(self.progress_bar_content, image="")
+        #button screen
+        self.canvas.itemconfig(self.button_large, image="")
+        self.canvas.itemconfig(self.button_small_yes, image="")
+        self.canvas.itemconfig(self.button_small_no, image="")
+        self.canvas.itemconfig(self.button_text, text = "")
         
-    def updateCanvas(self, auto_loop=True):
-        #self.loadDynamicResources()
+    def updateCanvas(self, auto_loop=False):
         #Top screen update
-        self.canvas.itemconfig(self.top_screen_bg, image=self.i_top_screen_bg)
-        self.canvas.itemconfig(self.top_screen_top_bar, image=self.i_top_screen_top_bar)
-        self.canvas.itemconfig(self.top_screen_bottom_bar, image=self.i_top_screen_bottom_bar)
-        self.canvas.itemconfig(self.top_screen_top_bar_shadow, image=self.i_top_screen_top_bar_shadow)
-        self.canvas.itemconfig(self.top_screen_bottom_bar_shadow, image=self.i_top_screen_bottom_bar_shadow)
-        
-        #Wifi Charging
-        wifi_icon = [self.i_wifi_disconnected, self.i_wifi0, self.i_wifi1, self.i_wifi2, self.i_wifi3]
-        battery_icon = [self.i_battery_charging, self.i_battery0, self.i_battery1, self.i_battery2, self.i_battery3, self.i_battery4, self.i_battery5]
-        progress_icon = [self.i_progress_bar_0, self.i_progress_bar_25, self.i_progress_bar_50, self.i_progress_bar_75, self.i_progress_bar_content]
-        if self.wifi_counter >= 4:
-            self.wifi_counter = 0
-        else:
-            self.wifi_counter = self.wifi_counter + 1
-        self.canvas.itemconfig(self.wifi, image=wifi_icon[self.wifi_counter])
-        if self.battery_counter >= 6:
-            self.battery_counter = 0
-        else:
-            self.battery_counter = self.battery_counter + 1
-        self.canvas.itemconfig(self.battery, image=battery_icon[self.battery_counter])
-        del wifi_icon
-        del battery_icon
+        self.canvas.itemconfig(self.top_screen_bg, image=self.i['top_screen_bg'])
+        self.canvas.itemconfig(self.top_screen_top_bar, image=self.i['top_screen_top_bar'])
+        self.canvas.itemconfig(self.top_screen_bottom_bar, image=self.i['top_screen_bottom_bar'])
+        self.canvas.itemconfig(self.top_screen_top_bar_shadow, image=self.i['top_screen_top_bar_shadow'])
+        self.canvas.itemconfig(self.top_screen_bottom_bar_shadow, image=self.i['top_screen_bottom_bar_shadow'])
         
         #Bottom screen update
-        self.canvas.itemconfig(self.bottom_screen_bg, image=self.i_bottom_screen_bg)
-        self.canvas.itemconfig(self.bottom_screen_top_bar, image=self.i_bottom_screen_top_bar)
-        self.canvas.itemconfig(self.bottom_screen_bottom_bar, image=self.i_bottom_screen_bottom_bar)
-        self.canvas.itemconfig(self.bottom_screen_top_bar_shadow, image=self.i_bottom_screen_top_bar_shadow)
-        self.canvas.itemconfig(self.bottom_screen_bottom_bar_shadow, image=self.i_bottom_screen_bottom_bar_shadow)
+        self.canvas.itemconfig(self.bottom_screen_bg, image=self.i['bottom_screen_bg'])
+        self.canvas.itemconfig(self.bottom_screen_top_bar, image=self.i['bottom_screen_top_bar'])
+        self.canvas.itemconfig(self.bottom_screen_bottom_bar, image=self.i['bottom_screen_bottom_bar'])
+        self.canvas.itemconfig(self.bottom_screen_top_bar_shadow, image=self.i['bottom_screen_top_bar_shadow'])
+        self.canvas.itemconfig(self.bottom_screen_bottom_bar_shadow, image=self.i['bottom_screen_bottom_bar_shadow'])
         
         #Text update
         self.canvas.itemconfig(self.version_number, fill=self.c['text']['rgb'], text = "Ver. {}".format(self.c['theme_version']))
-        self.canvas.itemconfig(self.date_time, fill=self.c['text']['rgb'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
         self.canvas.itemconfig(self.system_info, fill=self.c['text']['rgb'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.sd_ex, self.ctrnand_ex, self.twlnand_ex, self.twlphoto_ex))
         
         #Reload screen specific text and images
         if self.screen == "main_screen":
-            self.canvas.itemconfig(self.logo, image=self.i_logo)
-            self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
-            self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
+            self.canvas.itemconfig(self.logo, image=self.i['logo'])
+            self.canvas.itemconfig(self.selection_overlay, image=self.i['selection_overlay'])
+            self.canvas.itemconfig(self.scroll_bar, image=self.i['scroll_bar'])
             self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Main Menu")
             self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['text']['rgb'], text = "SD")
             self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['text']['rgb'], text = "CTR NAND")
@@ -345,14 +403,44 @@ class AppWindow(Tk):
             self.canvas.itemconfig(self.bottom_screen_listing13, fill=self.c['text']['rgb'], text = "Remote Install")
             self.canvas.itemconfig(self.bottom_screen_listing14, fill=self.c['text']['rgb'], text = "Update")
             self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'], text = "A: Select, START: Exit")
+        if self.screen == "sd_screen":
+            self.canvas.itemconfig(self.selection_overlay, image=self.i['selection_overlay'])
+            self.canvas.itemconfig(self.scroll_bar, image=self.i['scroll_bar'])
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Files")
+            self.canvas.itemconfig(self.bottom_screen_listing01, fill=self.c['directory']['rgb'], text = "<current directory>")
+            self.canvas.itemconfig(self.bottom_screen_listing02, fill=self.c['directory']['rgb'], text = "3ds")
+            self.canvas.itemconfig(self.bottom_screen_listing03, fill=self.c['directory']['rgb'], text = "CIAs")
+            self.canvas.itemconfig(self.bottom_screen_listing04, fill=self.c['directory']['rgb'], text = "fbi")
+            self.canvas.itemconfig(self.bottom_screen_listing05, fill=self.c['directory']['rgb'], text = "hblauncherloader")
+            self.canvas.itemconfig(self.bottom_screen_listing06, fill=self.c['directory']['rgb'], text = "JKSV")
+            self.canvas.itemconfig(self.bottom_screen_listing07, fill=self.c['directory']['rgb'], text = "luma")
+            self.canvas.itemconfig(self.bottom_screen_listing08, fill=self.c['directory']['rgb'], text = "Nintendo3DS")
+            self.canvas.itemconfig(self.bottom_screen_listing09, fill=self.c['file']['rgb'], text = "arm9loaderhax.bin")
+            self.canvas.itemconfig(self.bottom_screen_listing10, fill=self.c['file']['rgb'], text = "boot.3dsx")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'], text = "A: Select, B: Back, X: Refresh, Select: Options")
+        if self.screen == "nand_screen":
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Confirmation")
+            self.canvas.itemconfig(self.bottom_screen_justified_text, fill=self.c['text']['rgb'], text = "Modifying the NAND is dangerous and can render\nthe system inoperable.\nMake sure you know what you are doing.\n\nProceed?")
+            self.canvas.itemconfig(self.button_small_yes, image=self.i['button_small'])
+            self.canvas.itemconfig(self.button_small_no, image=self.i['button_small'])
+            self.canvas.itemconfig(self.button_text, fill=self.c['text']['rgb'], text = "Yes (A)                                        No (B)")
+        if self.screen == "remote_install_screen":
+            self.canvas.itemconfig(self.progress_bar_bg, image=self.i['progress_bar_bg'])
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Installing From URL(s)")
+            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'], text = "Press B to cancel.")
+        if self.screen == "update_screen":
+            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Success")
+            self.canvas.itemconfig(self.bottom_screen_justified_text, fill=self.c['text']['rgb'], text = "No updates available.")
+            self.canvas.itemconfig(self.button_large, image=self.i['button_large'])
+            self.canvas.itemconfig(self.button_text, fill=self.c['text']['rgb'], text = "Okay (Any Button)")
         if self.screen == "meta_screen":
-            self.canvas.itemconfig(self.meta_info_box, image=self.i_meta_info_box)
-            self.canvas.itemconfig(self.meta_info_box_shadow, image=self.i_meta_info_box_shadow)
+            self.canvas.itemconfig(self.meta_info_box, image=self.i['meta_info_box'])
+            self.canvas.itemconfig(self.meta_info_box_shadow, image=self.i['meta_info_box_shadow'])
             self.canvas.itemconfig(self.meta_info_icon, image=self.i_meta_info_icon)
             self.canvas.itemconfig(self.meta_info_box_info, fill=self.c['text']['rgb'], text = "{}\n{}\n{}".format(self.c['theme_title'], self.c['theme_desc'], self.c['theme_author']))
             self.canvas.itemconfig(self.meta_info_info, fill=self.c['text']['rgb'], text = "Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB")
-            self.canvas.itemconfig(self.selection_overlay, image=self.i_selection_overlay)
-            self.canvas.itemconfig(self.scroll_bar, image=self.i_scroll_bar)
+            self.canvas.itemconfig(self.selection_overlay, image=self.i['selection_overlay'])
+            self.canvas.itemconfig(self.scroll_bar, image=self.i['scroll_bar'])
             self.canvas.itemconfig(self.bottom_screen_top_bar_text,    fill=self.c['text']['rgb'],           text = "Textcolor.cfg (#BGR)")
             self.canvas.itemconfig(self.bottom_screen_listing01,       fill=self.c['text']['rgb'],           text = "{}{}".format("Default".ljust(43),           swapRGBBGR(self.c['text']['rgb']).rjust(42))  )
             self.canvas.itemconfig(self.bottom_screen_listing02,       fill=self.c['nand']['rgb'],           text = "{}{}".format("NAND".ljust(43),              swapRGBBGR(self.c['nand']['rgb']).rjust(42))  )
@@ -368,15 +456,34 @@ class AppWindow(Tk):
             self.canvas.itemconfig(self.bottom_screen_listing12,       fill=self.c['ticketinuse']['rgb'],    text = "{}{}".format("Ticket in use".ljust(40),     swapRGBBGR(self.c['ticketinuse']['rgb']).rjust(40))  )
             self.canvas.itemconfig(self.bottom_screen_listing13,       fill=self.c['ticketnotinuse']['rgb'], text = "{}{}".format("Ticket not in use".ljust(39), swapRGBBGR(self.c['ticketnotinuse']['rgb']).rjust(38))  )
             self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'],           text = "A: Select, B: Return, X: Refresh")
-        if self.screen == "progress_screen":
-            self.canvas.itemconfig(self.progress_bar_bg, image=self.i_progress_bar_bg)
-            self.canvas.itemconfig(self.progress_bar_content, image=progress_icon[self.wifi_counter])
-            self.canvas.itemconfig(self.bottom_screen_top_bar_text, fill=self.c['text']['rgb'], text = "Installing From URL(s)")
-            self.canvas.itemconfig(self.bottom_screen_bottom_bar_text, fill=self.c['text']['rgb'], text = "Press B to cancel.")
-        
+        y_offset = 240+int(self.c['screen_gap'])
+        self.canvas.coords(self.bottom_screen_justified_text, 160+40, (135/2)+20+y_offset)
         if auto_loop:
-            self.canvas.after(1000, self.updateCanvas)
+            self.updateAnim(auto_loop=True)
 
+    def updateAnim(self, auto_loop=False):
+        #Time Date
+        self.canvas.itemconfig(self.date_time, fill=self.c['text']['rgb'], text = "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()))
+        #Wifi Battery Progress bar
+        wifi_icon = [self.i['wifi_disconnected'], self.i['wifi0'], self.i['wifi1'], self.i['wifi2'], self.i['wifi3']]
+        battery_icon = [self.i['battery_charging'], self.i['battery0'], self.i['battery1'], self.i['battery2'], self.i['battery3'], self.i['battery4'], self.i['battery5']]
+        progress_icon = ["", self.i['progress_bar_content_25'], self.i['progress_bar_content_50'], self.i['progress_bar_content_75'], self.i['progress_bar_content']]
+        if self.wifi_counter >= 4:
+            self.wifi_counter = 0
+        else:
+            self.wifi_counter += 1
+        
+        if self.battery_counter >= 6:
+            self.battery_counter = 0
+        else:
+            self.battery_counter += 1
+        self.canvas.itemconfig(self.wifi, image=wifi_icon[self.wifi_counter])
+        self.canvas.itemconfig(self.battery, image=battery_icon[self.battery_counter])
+        if self.screen == "remote_install_screen":
+            self.canvas.itemconfig(self.progress_bar_content, image=progress_icon[self.wifi_counter])
+        if auto_loop:
+            self.canvas.after(1000, lambda: self.updateAnim(auto_loop=True))
+            
 def swapRGBBGR(color):
     if len(color) == 7:
         color = color[1:]

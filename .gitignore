@@ -1,3 +1,8 @@
+# Custom ignores
+romfs/
+test_theme/
+Preview.jpg
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -65,7 +70,6 @@ docs/_build/
 
 # PyBuilder
 target/
-romfs/
 
 # IPython Notebook
 .ipynb_checkpoints

@@ -13,6 +13,7 @@ file, or have a typo, fix it.
 Features:
 - FBI simulator preview (right click bottom screen entries)
 - Meta info preview
+- A simple screenshot button (saves to "preview.png" at exe/py location)
 - Reading from textcolor.cfg
 - Instant write to textcolor.cfg on color change
 - Colorpicker for text colors (right click entry in Text Cfg)

@@ -4,7 +4,7 @@ from tkinter import *
 from tkinter import font, messagebox, colorchooser
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
 from io import BytesIO
 import os, sys, datetime, random, string, time, base64, re
 
@@ -197,15 +197,27 @@ class AppWindow(Tk):
         self.toolbar = Frame(self.frame)
         self.main_button = Button(self.toolbar, text="Preview", command=lambda: self.changeScreen("main_screen"))
         self.item_button = Button(self.toolbar, text="Text Cfg", command=lambda: self.changeScreen("meta_screen"))
+        self.screenshot_button = Button(self.toolbar, text="Screenshot", command=self.createPreview)
         self.main_button.pack(side=LEFT, fill=X)
         self.item_button.pack(side=LEFT, fill=X)
+        self.screenshot_button.pack(side=LEFT, fill=X)
         self.toolbar.pack(side=TOP)
         self.canvas.bind("<Button-1>", lambda event: self.cursorMove(event, 'B1'))
         self.canvas.bind("<B1-Motion>", lambda event: self.cursorMove(event, 'B1'))
         self.canvas.bind("<Button-3>", lambda event: self.cursorMove(event, 'B3'))
         self.canvas.pack()
         self.frame.pack()
-    
+    def createPreview(self):
+        x1 = self.winfo_rootx()+self.canvas.winfo_x()
+        y1 = self.winfo_rooty()+self.canvas.winfo_y()
+        x2 = x1+self.canvas.winfo_width()
+        y2 = y1+self.canvas.winfo_height()
+        coords = [x1, y1, x2, y2]
+        if os.path.isfile("preview.png"):
+            if not messagebox.askyesno("Warning", "Preview image already exists, do you want to overwrite?", icon='warning'):
+                return
+        ImageGrab.grab().crop((x1,y1,x2,y2)).save("preview.png")    
+                
     def changeScreen(self, screen):
         self.screen = screen
         self.clearCanvas()

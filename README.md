@@ -15,11 +15,12 @@ Features:
 - Meta info preview
 - A simple screenshot button (saves to "preview.png" at exe/py location)
 - Reading from textcolor.cfg
-- Instant write to textcolor.cfg on color change
 - Colorpicker for text colors (right click entry in Text Cfg)
 - Auto-load correctly named created/modified image
 - Cycling wifi, battery, progress bar images
 - Configurable screen gap height
+- Configurable meta icon
+- Configurable animation duration (seconds)
 - A working clock
 - At least 2 buttons to press
 - Following selection overlay (left mouse press)
@@ -27,6 +28,7 @@ Features:
 - Randomly picked font family
 
 Things to do:
+- Writing to textcolor.cfg
 - Add derp generators for titleID, media type, version, product code, region, and size.
 - Translation support
 

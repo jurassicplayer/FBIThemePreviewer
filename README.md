@@ -15,6 +15,7 @@ Features:
 - Meta info preview
 - A simple screenshot button (saves to "preview.png" at exe/py location)
 - Reading from textcolor.cfg
+- Writing to textcolor.cfg
 - Colorpicker for text colors (right click entry in Text Cfg)
 - Auto-load correctly named created/modified image
 - Cycling wifi, battery, progress bar images
@@ -28,13 +29,9 @@ Features:
 - Randomly picked font family
 
 Things to do:
-- Writing to textcolor.cfg
 - Add derp generators for titleID, media type, version, product code, region, and size.
 - Translation support
 
 Things to note:
-- This is a stop-gap solution, make no mistakes with anything, because there is no safety
-net to stop you from ruining your carefully picked colors with a simple misclick. Since
-currently this program writes to textcolor.cfg right after you change a color, it is very
-easy to lose the previous color you had, unless you have good memory.
 - If you are missing files, this program might not crash.
+- If you are missing textcolor.cfg keys, it will fill them with FF000000

@@ -46,7 +46,8 @@ class AppWindow(tk.Tk):
             'fbi' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAlElEQVRYw+2YSw6AIAxEqeH+Vx5XJvhBVCyIebMitcpLRwoaAkJobFnugiQ1gzDLcsTCje5wpTrE2gdUVq6YM339HQQQQABHB4x3ko/6lqRdfOmduXw3wLMJ0riZBUkr0KcN/18Wb23bVs1je3S1mFVca30aW8auq/iKvW8f1dhJAAQQwN6NusW38WPAhj8XEEKol2b2bkM1u6bHlAAAAABJRU5ErkJggg==""",
             'textcolor' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAABIklEQVRYw+2YUQ7CMAiGYfFi3kRvUr2IL72Hnozfh6Vba7p2sZDwUBJCzLb084cNWgZAnm0h5zYBJ+AEnIDGdundwMymX3IA3Fy/1UmY2bzPcAdyacDtP6JtLNaqSFz17XIkwDDS6ocsfUBjyL8Bc8gzfqDMGW9mcum8YamOe16vMSJG7D/bHPlaCp71pKDIHpM6ImNrqAHmcHltIToBtFKQNUZ+ZobIzwd2rW4WIRppRmq9+Mll1OyFajUYsMeU4gAnNZjDadag6rhVS/NwyjUVpIAtbl0iwEeKczi3NWihoFoNhgeK6G5P8nqX0R3g/brCpfgL7kLBHDIHd7PtrKXZjYJHdvsMDiJaB5iV/bPOpKR5wppvH9X++DwCnoATsG1fA0G6TzK0GV0AAAAASUVORK5CYII=""",
             'screenshot' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAr0lEQVRYw+2XOw7AIAxDCcr9r5wuVEKolJAPYvBbWGgxJnFpKQAAAK6GVhNERMIXJSLtXFa+MEzc7n5rxrG8IvrRehCcUjfN8XFMFRhRihah9fYuhkAITIofCe/iyABvuSiaLwp7xFmjZ+dZd1D3JoyLjgZZNsRZ9fblksV1jir8lcPWcrg+ZvhUtKQL/GuGmbBjTWJ1IeQGZFxYvEGtvfqTo7Zc9lDkfwQAAAAw5QFkJVklKZGd2AAAAABJRU5ErkJggg==""",
-            'opendir' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAbElEQVRYw+2WMQ4AIAjEwPj/L+Pk7JGAOrQzwYoXgxkAAHyNK0UREVIzd78uuOVOZ+87VEtOcTJ2GqJS0yaYoToO0hNXRysTh5ltWhL8RBzG798MgggiiCCCCCL4Fnmbadjm6wQ7NmUAAIA7LC2EJS/bJR+TAAAAAElFTkSuQmCC"""
+            'opendir' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAbElEQVRYw+2WMQ4AIAjEwPj/L+Pk7JGAOrQzwYoXgxkAAHyNK0UREVIzd78uuOVOZ+87VEtOcTJ2GqJS0yaYoToO0hNXRysTh5ltWhL8RBzG798MgggiiCCCCCL4Fnmbadjm6wQ7NmUAAIA7LC2EJS/bJR+TAAAAAElFTkSuQmCC""",
+            'save' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAk0lEQVRYw+2XzQ4AEQyEjXj/V+6eSCN76BYldr6TIEzG+EuJEELI0cDaUURkeDIASwRWcY7x9RgukWaBAFJv4ludrtftXdksMkdlqQr+GpccGXgtcqvACfupUVY6MkNoOcmt7Rm8UqBriT0HtjcKJSJ7IzfQnUtsdecXxwwdpIO7HQx7UXtf1qF/kpG/CSGEEOLjAb/NVySMpPXIAAAAAElFTkSuQmCC""",
             }
         self.icon = {
             'app'        : tk.PhotoImage(data=self.icon_base64['app']),
@@ -54,7 +55,7 @@ class AppWindow(tk.Tk):
             'textcolor'  : tk.PhotoImage(data=self.icon_base64['textcolor']),
             'screenshot' : tk.PhotoImage(data=self.icon_base64['screenshot']),
             'opendir'    : tk.PhotoImage(data=self.icon_base64['opendir']),
-            'info'       : '', #tk.PhotoImage(data=self.icon_base64['info']),
+            'save'       : tk.PhotoImage(data=self.icon_base64['save']),
             }
         self.call('wm', 'iconphoto', self._w, self.icon['app'])
         self.resizable(width=False, height=False)
@@ -176,8 +177,9 @@ class AppWindow(tk.Tk):
         
         self.fbipreview_button = tk.Radiobutton(self, width=radio_icon_size, height=radio_icon_size, borderwidth=0, highlightthickness=0, indicatoron=0, offrelief='flat', overrelief='flat', value="main_screen", variable=self.active, image=self.icon['fbi'], command=lambda: self.changeScreen(self.v['previous_screen']))
         self.textcolor_button = tk.Radiobutton(self, width=radio_icon_size, height=radio_icon_size, borderwidth=0, highlightthickness=0, indicatoron=0, offrelief='flat', overrelief='flat', value="textcolor_screen", variable=self.active, image=self.icon['textcolor'], command=lambda: self.changeScreen("textcolor_screen"))
-        self.screenshot_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['screenshot'], command=self.createPreview)
+        self.screenshot_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['screenshot'], command=self.savePreview)
         self.opendir_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['opendir'], command=self.openTheme)
+        self.save_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['save'], command=lambda: self.saveConfig("textcolor"))
         self.frame.pack()
     def loadConfig(self, config_dict, filename, argb_check=False):
         print("Loading config: {}".format(filename))
@@ -262,11 +264,35 @@ class AppWindow(tk.Tk):
             self.icon['app'] = tk.PhotoImage(file=filepath)
     def changeScreen(self, screen):
         print("Changing screens: {} => {}".format(self.v['current_screen'], screen))
-        if self.v['current_screen'] != "textcolor_screen":
+        if screen == "textcolor_screen":
             self.v['previous_screen'] = self.v['current_screen']
+        else:
+            self.v['previous_screen'] = screen
         self.v['current_screen'] = screen
         self.updateCanvas()
-    def createPreview(self):
+    def saveConfig(self, config_type):
+        print("Saving config: {}".format(config_type))
+        if config_type == "config":
+            filepath = "config"
+            config_dict = self.app_config
+            ordered = ['theme_folder', 'theme_title', 'theme_desc', 'theme_author', 'theme_version', 'meta_icon', 'screen_gap', 'anim_duration', 'overwrite', 'language']
+        elif config_type == "textcolor":
+            theme_folder = self.app_config['theme_folder']
+            os.makedirs(theme_folder, exist_ok=True)
+            filepath = os.path.join(theme_folder,'textcolor.cfg')
+            config_dict={}
+            for key in self.text_config:
+                value = "{}{}".format(self.text_config[key]['alpha'], swapRGBBGR(self.text_config[key]['rgb'])[1:])
+                config_dict.update({key: value})
+            ordered = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
+            if os.path.isfile(filepath) and not self.app_config['overwrite'] in ['always', 'textcolor']:
+                if not messagebox.askyesno("Warning", "A textcolor.cfg already exists, do you want to overwrite?", icon='warning'):
+                    return
+        with open(filepath, 'w') as f:
+            for key in ordered:
+                f.write("{}={}\n".format(key, config_dict[key]))
+            f.truncate(f.tell() - len(os.linesep))
+    def savePreview(self):
         print("Generating preview image...")
         x1 = self.winfo_rootx()+self.canvas.winfo_x()
         y1 = self.winfo_rooty()+self.canvas.winfo_y()
@@ -341,7 +367,7 @@ class AppWindow(tk.Tk):
             'textcolor_screen': {
                 #Text
                 'meta_info_box_text': ["", self.text_config['text']['rgb']],
-                'meta_info_text': ["-ATTENTION-\nAutosave is currently disabled, so remember to type down\nyour colors manually to not lose them. I'm going to be\nimplementing a save button later to prevent mess-ups.", self.text_config['text']['rgb']],
+                'meta_info_text': ["", self.text_config['text']['rgb']],
                 'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text00'], self.text_config['text']['rgb']],
                 'bottom_screen_listing01': ['{:<40}{:>50}'.format('text', swapRGBBGR(self.text_config['text']['rgb'])),self.text_config['text']['rgb']],
                 'bottom_screen_listing02': ['{:<40}{:>48}'.format('nand', swapRGBBGR(self.text_config['nand']['rgb'])),self.text_config['nand']['rgb']],
@@ -373,7 +399,7 @@ class AppWindow(tk.Tk):
                 'bottom_screen_listing06': ['Dump NAND',self.text_config['text']['rgb']],
                 'bottom_screen_listing07': ['Titles',self.text_config['text']['rgb']],
                 'bottom_screen_listing08': ['Pending Titles (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing09': ['Tickets (WIP)',self.text_config['text']['rgb']],
+                'bottom_screen_listing09': ['Tickets',self.text_config['text']['rgb']],
                 'bottom_screen_listing10': ['Ext Save Data (WIP)',self.text_config['text']['rgb']],
                 'bottom_screen_listing11': ['System Save Data (WIP)',self.text_config['text']['rgb']],
                 'bottom_screen_listing12': ['TitleDB (WIP)',self.text_config['text']['rgb']],
@@ -411,10 +437,10 @@ class AppWindow(tk.Tk):
                 'meta_info_text': ["Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB", self.text_config['text']['rgb']],
                 'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text04'], self.text_config['text']['rgb']],
                 'bottom_screen_listing01': ['FBI',self.text_config['sd']['rgb']],
-                'bottom_screen_listing02': ['FTPD',self.text_config['sd']['rgb']],
+                'bottom_screen_listing02': ['Super ftpd II Turbo',self.text_config['sd']['rgb']],
                 'bottom_screen_listing03': ['hblauncher_loader v1.2',self.text_config['sd']['rgb']],
                 'bottom_screen_listing04': ["JK's Save Manager",self.text_config['sd']['rgb']],
-                'bottom_screen_listing05': ['LovePlus+',self.text_config['sd']['rgb']],
+                'bottom_screen_listing05': ['NEW ラブプラス+',self.text_config['sd']['rgb']],
                 'bottom_screen_listing06': ['Theme',self.text_config['sd']['rgb']],
                 'bottom_screen_listing07': ['Friend List',self.text_config['nand']['rgb']],
                 'bottom_screen_listing08': ['Internet Browser',self.text_config['nand']['rgb']],
@@ -443,6 +469,19 @@ class AppWindow(tk.Tk):
                 },
             'ticket_screen': {
                 'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text06'], self.text_config['text']['rgb']],
+                'bottom_screen_listing01': ['000400000F800100',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing02': ['000400000BEEF500',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing03': ['000400000D921E00',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing04': ['0004000002C23200',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing05': ['00040000000F4E00',self.text_config['ticketnotinuse']['rgb']],
+                'bottom_screen_listing06': ['0004008C00008F00',self.text_config['ticketnotinuse']['rgb']],
+                'bottom_screen_listing07': ['0004003000009602',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing08': ['0004003000009402',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing09': ['0004003000009702',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing10': ['0004001000021000',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing11': ['000400000F12EE00',self.text_config['ticketnotinuse']['rgb']],
+                'bottom_screen_listing12': ['000400000009B300',self.text_config['ticketinuse']['rgb']],
+                'bottom_screen_listing13': ['00048005484E4441',self.text_config['ticketinuse']['rgb']],
                 'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text04'], self.text_config['text']['rgb']],
                 'scroll_bar': self.i['scroll_bar'],
                 'selection_overlay': self.i['selection_overlay'],
@@ -565,8 +604,9 @@ class AppWindow(tk.Tk):
         #Layer topmost (toolbar buttons)
         self.canvas.create_window(0, y_offset, anchor=tk.NW, tags='toolbar', window=self.fbipreview_button)
         self.canvas.create_window(0, 40+y_offset, anchor=tk.NW, tags='toolbar', window=self.textcolor_button)
-        self.canvas.create_window(0, 80+y_offset, anchor=tk.NW, tags='toolbar', window=self.screenshot_button)
-        self.canvas.create_window(0, 240+y_offset, anchor=tk.SW, tags='toolbar', window=self.opendir_button)
+        self.canvas.create_window(x_offset+320, y_offset, anchor=tk.NW, tags='toolbar', window=self.opendir_button)
+        self.canvas.create_window(x_offset+320, 40+y_offset, anchor=tk.NW, tags='toolbar', window=self.save_button)
+        self.canvas.create_window(x_offset+320, 80+y_offset, anchor=tk.NW, tags='toolbar', window=self.screenshot_button)
         self.updateAnimationLoop()
     def updateAnimationLoop(self, loop=False):
         #print("Repopulating canvas animations...")

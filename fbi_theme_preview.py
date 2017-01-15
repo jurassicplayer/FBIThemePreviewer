@@ -17,11 +17,6 @@ import random
 import datetime
 #Checking if string is valid ARGB
 import re
-#Resizing program icon for meta info icon
-from io import BytesIO
-import base64
-#Checking memory usage
-import psutil
 #Pretty print dicts during debug
 from pprint import pprint as p
 
@@ -234,7 +229,7 @@ class AppWindow(tk.Tk):
             elif filename == 'progress_bar_content' or filename == 'selection_overlay':
                 tmp_image = Image.open(filepath)
                 if filename == 'selection_overlay':
-                    tmp_image = tmp_image.resize((320, 15), Image.ANTIALIAS)
+                    tmp_image = tmp_image.convert('RGBA').resize((320, 15), Image.ANTIALIAS)
                 if filename == 'progress_bar_content':
                     self.i['{}_25'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.25), 30)))
                     self.i['{}_50'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.50), 30)))
@@ -335,11 +330,13 @@ class AppWindow(tk.Tk):
                 if y_pos_binned == 1:
                     self.changeScreen("nand_screen")
                 if y_pos_binned == 2:
-                    self.changeScreen("nand_screen")
+                    print('TWL NAND')
+                    #self.changeScreen("nand_screen")
                 if y_pos_binned == 3:
                     self.changeScreen("options_screen")
                 if y_pos_binned == 4:
-                    self.changeScreen("options_screen")
+                    print('TWL Sound')
+                    #self.changeScreen("options_screen")
                 if y_pos_binned == 5:
                     self.changeScreen("success_screen")
                 if y_pos_binned == 6:
@@ -357,7 +354,8 @@ class AppWindow(tk.Tk):
                 if y_pos_binned == 12:
                     self.changeScreen("remote_install_screen")
                 if y_pos_binned == 13:
-                    self.changeScreen("success_screen")
+                    print('Updates')
+                    #self.changeScreen("success_screen")
     def updateCanvas(self):
         print("Refreshing canvas variables")
         #Delete all current canvas elements
@@ -393,7 +391,7 @@ class AppWindow(tk.Tk):
                 'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text01'], self.text_config['text']['rgb']],
                 'bottom_screen_listing01': ['SD',self.text_config['text']['rgb']],
                 'bottom_screen_listing02': ['CTR NAND',self.text_config['text']['rgb']],
-                'bottom_screen_listing03': ['TWL NAND',self.text_config['text']['rgb']],
+                'bottom_screen_listing03': ['TWL NAND (WIP)',self.text_config['text']['rgb']],
                 'bottom_screen_listing04': ['TWL Photo',self.text_config['text']['rgb']],
                 'bottom_screen_listing05': ['TWL Sound (WIP)',self.text_config['text']['rgb']],
                 'bottom_screen_listing06': ['Dump NAND',self.text_config['text']['rgb']],
@@ -402,7 +400,7 @@ class AppWindow(tk.Tk):
                 'bottom_screen_listing09': ['Tickets',self.text_config['text']['rgb']],
                 'bottom_screen_listing10': ['Ext Save Data (WIP)',self.text_config['text']['rgb']],
                 'bottom_screen_listing11': ['System Save Data (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing12': ['TitleDB (WIP)',self.text_config['text']['rgb']],
+                'bottom_screen_listing12': ['TitleDB',self.text_config['text']['rgb']],
                 'bottom_screen_listing13': ['Remote Install',self.text_config['text']['rgb']],
                 'bottom_screen_listing14': ['Update',self.text_config['text']['rgb']],
                 'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text01'], self.text_config['text']['rgb']],
@@ -490,7 +488,20 @@ class AppWindow(tk.Tk):
                 'meta_info_box_text': ["{}\n{}\n{}".format(self.app_config['theme_title'], self.app_config['theme_desc'], self.app_config['theme_author']), self.text_config['text']['rgb']],
                 'meta_info_text': ["Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB", self.text_config['text']['rgb']],
                 'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text09'], self.text_config['text']['rgb']],
-                'bottom_screen_bottom_bar_text': ['', self.text_config['text']['rgb']],
+                'bottom_screen_listing01': ['Boot NTR Selector',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing02': ['CTRXplorer',self.text_config['installed']['rgb']],
+                'bottom_screen_listing03': ['FBI',self.text_config['installed']['rgb']],
+                'bottom_screen_listing04': ['GYTB',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing05': ['hblauncher_loader v1.2',self.text_config['installed']['rgb']],
+                'bottom_screen_listing06': ["JK's Save Manager",self.text_config['installed']['rgb']],
+                'bottom_screen_listing07': ['Luma3DS Updater',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing08': ['MultiUpdater',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing09': ['Non-Stop Nyan Cat',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing10': ['OpenSyobon3DS',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing11': ['PKSM',self.text_config['notinstalled']['rgb']],
+                'bottom_screen_listing12': ['Super ftpd II Turnbo',self.text_config['installed']['rgb']],
+                'bottom_screen_listing13': ['TWLoader',self.text_config['installed']['rgb']],
+                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text04'], self.text_config['text']['rgb']],
                 'meta_info_box': self.i['meta_info_box'],
                 'meta_info_box_icon': self.icon['app'],
                 'meta_info_box_shadow': self.i['meta_info_box_shadow'],

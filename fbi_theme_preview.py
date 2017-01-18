@@ -8,7 +8,6 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 #pillow bindings
 from PIL import Image, ImageTk, ImageGrab
-
 #File name/path manipulation
 import os
 #RNG for generated values
@@ -259,9 +258,9 @@ class AppWindow(tk.Tk):
             self.icon['app'] = tk.PhotoImage(file=filepath)
     def changeScreen(self, screen):
         print("Changing screens: {} => {}".format(self.v['current_screen'], screen))
-        if screen == "textcolor_screen":
+        if screen == "textcolor_screen" and not self.v['current_screen'] == "textcolor_screen":
             self.v['previous_screen'] = self.v['current_screen']
-        else:
+        elif not screen == "textcolor_screen" and not self.v['current_screen'] == "textcolor_screen":
             self.v['previous_screen'] = screen
         self.v['current_screen'] = screen
         self.updateCanvas()

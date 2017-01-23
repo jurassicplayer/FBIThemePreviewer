@@ -7,7 +7,9 @@ from tkinter import font, filedialog, messagebox, colorchooser, StringVar
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 #pillow bindings
-from PIL import Image, ImageTk, ImageGrab
+from PIL import Image, ImageTk, ImageDraw, ImageGrab, ImageFont
+from io import BytesIO
+import base64
 #File name/path manipulation
 import os
 #RNG for generated values
@@ -26,10 +28,12 @@ class AppWindow(tk.Tk):
         self.setupApp()
         self.setupVariables()
         self.loadConfig(self.app_config, 'config')
+        self.loadFont(self.app_config['font_path'])
         self.setupWidget()
         if self.app_config['meta_icon']:
             self.loadCustomMetaIcon(self.app_config['meta_icon'])
         self.loadTheme(self.app_config['theme_folder'])
+        self.rebuildCache()
         self.updateCanvas()
         self.updateAnimationLoop(loop=True)
     
@@ -44,14 +48,15 @@ class AppWindow(tk.Tk):
             'save' : """iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAk0lEQVRYw+2XzQ4AEQyEjXj/V+6eSCN76BYldr6TIEzG+EuJEELI0cDaUURkeDIASwRWcY7x9RgukWaBAFJv4ludrtftXdksMkdlqQr+GpccGXgtcqvACfupUVY6MkNoOcmt7Rm8UqBriT0HtjcKJSJ7IzfQnUtsdecXxwwdpIO7HQx7UXtf1qF/kpG/CSGEEOLjAb/NVySMpPXIAAAAAElFTkSuQmCC""",
             }
         self.icon = {
-            'app'        : tk.PhotoImage(data=self.icon_base64['app']),
+            'app'        : Image.open(BytesIO(base64.b64decode(self.icon_base64['app']))),
             'fbi'        : tk.PhotoImage(data=self.icon_base64['fbi']),
             'textcolor'  : tk.PhotoImage(data=self.icon_base64['textcolor']),
             'screenshot' : tk.PhotoImage(data=self.icon_base64['screenshot']),
             'opendir'    : tk.PhotoImage(data=self.icon_base64['opendir']),
             'save'       : tk.PhotoImage(data=self.icon_base64['save']),
             }
-        self.call('wm', 'iconphoto', self._w, self.icon['app'])
+        app_icon = ImageTk.PhotoImage(self.icon['app'])
+        self.call('wm', 'iconphoto', self._w, app_icon)
         self.resizable(width=False, height=False)
         self.title('FBI Theme Previewer')
     def setupVariables(self):
@@ -63,27 +68,27 @@ class AppWindow(tk.Tk):
             'theme_title'   : "FBI Theme Previewer",
             'theme_desc'    : "A Shit Tier Stop-gap Solution",
             'theme_author'  : "Jurassicplayer",
-            'theme_version' : "2.4.6",
+            'theme_version' : "2.4.7",
+            'font_path'     : "font/RodinBokutoh_DB.otf",
             'meta_icon'     : '',
             'screen_gap'    : 0, #68
             'anim_duration' : 1, #In seconds
             'overwrite'     : 'never', #never/preview/textcolor/always
-            'language'      : "en",
             }
         self.text_config = {
-            'text':           {'rgb': "#000000", 'alpha': "FF"},
-            'nand':           {'rgb': "#000000", 'alpha': "FF"},
-            'sd':             {'rgb': "#000000", 'alpha': "FF"},
-            'gamecard':       {'rgb': "#000000", 'alpha': "FF"},
-            'dstitle':        {'rgb': "#000000", 'alpha': "FF"},
-            'file':           {'rgb': "#000000", 'alpha': "FF"},
-            'directory':      {'rgb': "#000000", 'alpha': "FF"},
-            'enabled':        {'rgb': "#000000", 'alpha': "FF"},
-            'disabled':       {'rgb': "#000000", 'alpha': "FF"},
-            'installed':      {'rgb': "#000000", 'alpha': "FF"},
-            'notinstalled':   {'rgb': "#000000", 'alpha': "FF"},
-            'ticketinuse':    {'rgb': "#000000", 'alpha': "FF"},
-            'ticketnotinuse': {'rgb': "#000000", 'alpha': "FF"},
+            'text':           (0,0,0,255),
+            'nand':           (0,0,0,255),
+            'sd':             (0,0,0,255),
+            'gamecard':       (0,0,0,255),
+            'dstitle':        (0,0,0,255),
+            'file':           (0,0,0,255),
+            'directory':      (0,0,0,255),
+            'enabled':        (0,0,0,255),
+            'disabled':       (0,0,0,255),
+            'installed':      (0,0,0,255),
+            'notinstalled':   (0,0,0,255),
+            'ticketinuse':    (0,0,0,255),
+            'ticketnotinuse': (0,0,0,255),
             }
         self.i = {
             'battery_charging': '',
@@ -105,9 +110,6 @@ class AppWindow(tk.Tk):
             'meta_info_box_shadow': '',
             'progress_bar_bg': '',
             'progress_bar_content': '',
-            'progress_bar_content_25': '',
-            'progress_bar_content_50': '',
-            'progress_bar_content_75': '',
             'scroll_bar': '',
             'selection_overlay': '',
             'top_screen_bg': '',
@@ -125,56 +127,148 @@ class AppWindow(tk.Tk):
             'current_screen'     : 'main_screen',
             'previous_screen'    : 'main_screen',
             'selection_position' : 0,
-            'sd_ex'              : 64,
-            'ctrnand_ex'         : 328,
-            'twlnand_ex'         : 128,
-            'twlphoto_ex'        : 32,
+            'sd_ex'              : 64.1,
+            'ctrnand_ex'         : 328.7,
+            'twlnand_ex'         : 128.8,
+            'twlphoto_ex'        : 32.4,
+            'top_screen'         : '',
+            'bottom_screen'      : '',
+            'canvas_image'       : '',
+            'd_top_screen'       : '',
+            'd_bottom_screen'    : '',
+            'font_normal'        : '',
+            'font_mini'          : '',
             }
-        self.l = {
-            'title'  : 'FBI Theme Previewer',
-            'error'  : 'Error',
-            'error1' : 'File not found (X).',            'warn'   : 'Warning',
-            'warn1'  : 'Preview image already exists.\nDo you want to overwrite?',
-            'bottom_screen_top_bar_text00' : 'Textcolor.cfg (#BGR)',
-            'bottom_screen_top_bar_text01' : 'Main Menu',
-            'bottom_screen_top_bar_text02' : 'Files',
-            'bottom_screen_top_bar_text03' : 'Confirmation',
-            'bottom_screen_top_bar_text04' : 'Titles',
-            'bottom_screen_top_bar_text05' : 'Pending Titles',
-            'bottom_screen_top_bar_text06' : 'Tickets',
-            'bottom_screen_top_bar_text07' : 'Ext Save Data',
-            'bottom_screen_top_bar_text08' : 'System Save Data',
-            'bottom_screen_top_bar_text09' : 'TitleDB.com',
-            'bottom_screen_top_bar_text10' : 'Installing From URL(s)',
-            'bottom_screen_top_bar_text11' : 'Success',
-            'bottom_screen_top_bar_text12' : 'Options',
-            'bottom_screen_bottom_bar_text00' : "Don't forget to save!",
-            'bottom_screen_bottom_bar_text01' : 'A: Select, START: Exit',
-            'bottom_screen_bottom_bar_text02' : 'A: Select, B: Back, X: Refresh, Select: Options',
-            'bottom_screen_bottom_bar_text03' : 'A: Select, B: Return, X: Refresh, Select: Options',
-            'bottom_screen_bottom_bar_text04' : 'A: Select, B: Return, X: Refresh',
-            'bottom_screen_bottom_bar_text05' : 'A: Select, B: Return',
-            'bottom_screen_bottom_bar_text06' : 'Press B to cancel.'
+        self.v.update({
+            'top_screen'         : Image.new('RGBA', (400,240), (255,255,255,0)),
+            'bottom_screen'      : Image.new('RGBA', (320,240), (255,255,255,0)),
+            'canvas_image'       : Image.new('RGBA', (400,self.app_config['screen_gap']+480), (255,255,255,0)),
+            })
+        self.v.update({
+            'd_top_screen'       : ImageDraw.Draw(self.v['top_screen']),
+            'd_bottom_screen'    : ImageDraw.Draw(self.v['bottom_screen']),
+            })
+        self.c = {
+                'textcolor_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'main_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'sd_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'nand_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'options_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'titles_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'ticket_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'titledb_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'remote_install_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
+                'success_screen' : {
+                        'top_screen' : '',
+                        'bottom_screen' : '',
+                    },
             }
     def setupWidget(self):
         print("Setting up main widget...")
         self.frame = tk.Frame(self)
-        self.canvas = tk.Canvas(self.frame, width=400, height=480+int(self.app_config['screen_gap']), borderwidth=0, highlightthickness=0)
+        self.canvas = tk.Canvas(self.frame, width=400, height=480+int(self.app_config['screen_gap']), 
+        borderwidth=0, highlightthickness=0)
         self.canvas.bind("<Button-1>", lambda event: self.cursorEvent(event, 'B1'))
         self.canvas.bind("<B1-Motion>", lambda event: self.cursorEvent(event, 'B1'))
         self.canvas.bind("<Button-3>", lambda event: self.cursorEvent(event, 'B3'))
         self.canvas.pack()
         self.active = StringVar()
         self.active.set("main_screen")
-        radio_icon_size = 38
-        button_icon_size = 40
+        radio_size = 38
+        button_size = 40
         
-        self.fbipreview_button = tk.Radiobutton(self, width=radio_icon_size, height=radio_icon_size, borderwidth=0, highlightthickness=0, indicatoron=0, offrelief='flat', overrelief='flat', value="main_screen", variable=self.active, image=self.icon['fbi'], command=lambda: self.changeScreen(self.v['previous_screen']))
-        self.textcolor_button = tk.Radiobutton(self, width=radio_icon_size, height=radio_icon_size, borderwidth=0, highlightthickness=0, indicatoron=0, offrelief='flat', overrelief='flat', value="textcolor_screen", variable=self.active, image=self.icon['textcolor'], command=lambda: self.changeScreen("textcolor_screen"))
-        self.screenshot_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['screenshot'], command=self.savePreview)
-        self.opendir_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['opendir'], command=self.openTheme)
-        self.save_button = tk.Button(self, width=button_icon_size, height=button_icon_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['save'], command=lambda: self.saveConfig("textcolor"))
+        self.fbipreview_button = tk.Radiobutton(self, width=radio_size, height=radio_size, borderwidth=0, highlightthickness=0, indicatoron=0, offrelief='flat', overrelief='flat', value="main_screen", variable=self.active, image=self.icon['fbi'], command=lambda: self.changeScreen(self.v['previous_screen']))
+        self.textcolor_button = tk.Radiobutton(self, width=radio_size, height=radio_size, borderwidth=0, highlightthickness=0, indicatoron=0, offrelief='flat', overrelief='flat', value="textcolor_screen", variable=self.active, image=self.icon['textcolor'], command=lambda: self.changeScreen("textcolor_screen"))
+        self.screenshot_button = tk.Button(self, width=button_size, height=button_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['screenshot'], command=self.savePreview)
+        self.opendir_button = tk.Button(self, width=button_size, height=button_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['opendir'], command=self.openTheme)
+        self.save_button = tk.Button(self, width=button_size, height=button_size, borderwidth=0, highlightthickness=0, overrelief='flat', image=self.icon['save'], command=lambda: self.saveConfig("textcolor"))
+        
+        #Slider bars 
+        config_array = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
+        self.sliders = {}
+        for i in range(len(config_array)):
+            color_key = config_array[i]
+            slider_var = tk.IntVar()
+            label = tk.Label(self.frame,font=("Arial", 7), borderwidth=0, highlightthickness=0, padx=0, pady=0, textvariable=slider_var)
+            label.place(x=40+180, y=i*15+2+20+240+self.app_config['screen_gap'])
+            scale = tk.Scale(self.frame, orient='horizontal', length=100, width=11, sliderlength=8, from_=0, to=255, showvalue=0, borderwidth=0, variable=slider_var, highlightthickness=0, relief='flat')
+            self.sliders.update({color_key: [scale, label]})
+        for key in ["<ButtonRelease-1>", "<ButtonRelease-3>"]:
+            self.sliders['text'][0].bind(key, lambda e: self.updateAlpha('text'))
+            self.sliders['nand'][0].bind(key, lambda e: self.updateAlpha('nand'))
+            self.sliders['sd'][0].bind(key, lambda e: self.updateAlpha('sd'))
+            self.sliders['gamecard'][0].bind(key, lambda e: self.updateAlpha('gamecard'))
+            self.sliders['dstitle'][0].bind(key, lambda e: self.updateAlpha('dstitle'))
+            self.sliders['file'][0].bind(key, lambda e: self.updateAlpha('file'))
+            self.sliders['directory'][0].bind(key, lambda e: self.updateAlpha('directory'))
+            self.sliders['enabled'][0].bind(key, lambda e: self.updateAlpha('enabled'))
+            self.sliders['disabled'][0].bind(key, lambda e: self.updateAlpha('disabled'))
+            self.sliders['installed'][0].bind(key, lambda e: self.updateAlpha('installed'))
+            self.sliders['notinstalled'][0].bind(key, lambda e: self.updateAlpha('notinstalled'))
+            self.sliders['ticketinuse'][0].bind(key, lambda e: self.updateAlpha('ticketinuse'))
+            self.sliders['ticketnotinuse'][0].bind(key, lambda e: self.updateAlpha('ticketnotinuse'))
         self.frame.pack()
+    def updateAlpha(self, color_key):
+        value = self.sliders[color_key][0].get()
+        print('Updating cache with new text alpha {}...'.format(value))
+        r,g,b,a = self.text_config[color_key]
+        self.text_config[color_key] = (r,g,b,int(value))
+        cache_array =['textcolor_screen']
+        screen_refresh = 'bottom'
+        if color_key == 'text':
+            cache_array += ['main_screen', 'sd_screen', 'nand_screen', 'options_screen', 'titles_screen', 'titledb_screen', 'ticket_screen', 'remote_install_screen', 'success_screen']
+            screen_refresh='topbottom'
+        elif color_key in ['nand', 'sd', 'gamecard', 'dstitle']:
+            cache_array += ['titles_screen']
+        elif color_key in ['file', 'directory']:
+            cache_array += ['sd_screen', 'nand_screen', 'options_screen', 'titles_screen', 'titledb_screen', 'ticket_screen', 'remote_install_screen', 'success_screen']
+        elif color_key in ['enabled', 'disabled']:
+            cache_array += ['options_screen']
+        elif color_key in ['installed', 'notinstalled']:
+            cache_array += ['titledb_screen']
+        elif color_key in ['ticketinuse', 'ticketnotinuse']:
+            cache_array += ['ticket_screen']
+        for screen_name in cache_array:
+            self.drawCanvasCache(screen_name, screen=screen_refresh)
+            self.updateCanvas()
+    def loadFont(self, filepath):
+        if os.path.isfile(filepath):
+            self.v['font_normal'] = ImageFont.truetype(filepath, 12)
+            self.v['font_mini'] = ImageFont.truetype(filepath, 9)
+        else:
+            try:
+                self.v['font_normal'] = ImageFont.truetype("arialbd.ttf", 12)
+                self.v['font_mini'] = ImageFont.truetype("arialbd.ttf", 9)
+            except:
+                self.v['font_normal'] = ImageFont.load_default()
+                self.v['font_mini'] = ImageFont.load_default()
     def loadConfig(self, config_dict, filename, argb_check=False):
         print("Loading config: {}".format(filename))
         if os.path.isfile(filename):
@@ -188,9 +282,9 @@ class AppWindow(tk.Tk):
                         if argb_check:
                             argbstring = re.compile(r'[a-fA-F0-9]{8}$')
                             if argbstring.match(value):
-                                A = value[:2]
-                                RGB = swapRGBBGR(value[2:])
-                                config_dict.update({key : {'rgb' : RGB, 'alpha' : A} })
+                                a, b, g, r = tuple([value[i:i+2] for i in range(0, len(value), 2)])
+                                config_dict.update({key : (int(r, 16), int(g, 16), int(b, 16), int(a, 16)) })
+                                self.sliders[key][0].set(int(a, 16))
                             else:
                                 malformed_color.append(line)
                         else:
@@ -218,24 +312,17 @@ class AppWindow(tk.Tk):
                 failed_to_load.sort()
                 messagebox.showwarning("Error", 'Failed to load {}/{} image(s):\n{}'.format(len(failed_to_load), len(self.i)-3, "\n".join(failed_to_load)))
             self.observer.schedule(FSEventHandler(self), folderpath, recursive=False)
+            self.rebuildCache()
         else:
             messagebox.showwarning("Error", 'Theme path not found:\n{}'.format(folderpath))
     def loadImage(self, folderpath, filename):
         print("Loading image: {}".format(os.path.join(folderpath, "{}.png".format(filename))))
         try:
             filepath = os.path.join(folderpath, "{}.png".format(filename))
-            if filename in ['progress_bar_content_25', 'progress_bar_content_50', 'progress_bar_content_75']:    return
-            elif filename == 'progress_bar_content' or filename == 'selection_overlay':
-                tmp_image = Image.open(filepath)
-                if filename == 'selection_overlay':
-                    tmp_image = tmp_image.convert('RGBA').resize((320, 15), Image.ANTIALIAS)
-                if filename == 'progress_bar_content':
-                    self.i['{}_25'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.25), 30)))
-                    self.i['{}_50'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.50), 30)))
-                    self.i['{}_75'.format(filename)] = ImageTk.PhotoImage(tmp_image.crop((0, 0, int(280*0.75), 30)))
-                self.i[filename] = ImageTk.PhotoImage(tmp_image)
-            else:
-                self.i[filename] = tk.PhotoImage(file=filepath)
+            self.i[filename] = Image.open(filepath).convert('RGBA')
+            if filename == 'selection_overlay':
+                self.i[filename] = self.i[filename].resize((320, 15), Image.ANTIALIAS)
+                self.i[filename] = ImageTk.PhotoImage(self.i[filename])
         except Exception as e:
             return filename
     def openTheme(self):
@@ -255,7 +342,19 @@ class AppWindow(tk.Tk):
     def loadCustomMetaIcon(self, filepath):
         print("Loading custom meta icon: {}".format(filepath))
         if os.path.isfile(filepath):
-            self.icon['app'] = tk.PhotoImage(file=filepath)
+            self.icon['app'] = Image.open(filepath).convert('RGBA')
+            for screen in ['textcolor_screen', 'titles_screen', 'titledb_screen']:
+                self.drawCanvasCache(screen, screen='top')
+    def loadCustomColor(self):
+        color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
+        if self.v['selection_position'] < len(color_index):
+            r,g,b,a = self.text_config[color_index[self.v['selection_position']]]
+            new_color = colorchooser.askcolor(initialcolor =(r,g,b))[0]
+            if new_color:
+                r,g,b = new_color
+                self.text_config[color_index[self.v['selection_position']]] = (int(r),int(g),int(b),a)
+                self.rebuildCache()
+                self.updateCanvas()
     def changeScreen(self, screen):
         print("Changing screens: {} => {}".format(self.v['current_screen'], screen))
         if screen == "textcolor_screen" and not self.v['current_screen'] == "textcolor_screen":
@@ -276,7 +375,8 @@ class AppWindow(tk.Tk):
             filepath = os.path.join(theme_folder,'textcolor.cfg')
             config_dict={}
             for key in self.text_config:
-                value = "{}{}".format(self.text_config[key]['alpha'], swapRGBBGR(self.text_config[key]['rgb'])[1:])
+                r,g,b,a = self.text_config[key]
+                value = "{:02x}{:02x}{:02x}{:02x}".format(a,b,g,r).upper()
                 config_dict.update({key: value})
             ordered = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
             if os.path.isfile(filepath) and not self.app_config['overwrite'] in ['always', 'textcolor']:
@@ -301,6 +401,7 @@ class AppWindow(tk.Tk):
         self.canvas.delete('toolbar')
         self.canvas.update_idletasks()
         ImageGrab.grab().crop((x1,y1,x2,y2)).save("preview.png")
+        #self.v['canvas_image'].save("preview.png")
         self.updateCanvas()
     def cursorEvent(self, event, button):
         #print("Handling cursor event: {}".format(button))
@@ -310,17 +411,12 @@ class AppWindow(tk.Tk):
                 self.openCustomMetaIcon()
         #Bottom screen handling
         y_pos_offset = 20+240+int(self.app_config['screen_gap']) #20px bottom_screen_top_bar, 240px top screen, self.app_config['screen_gap']
-        if event.x >= 40 and event.x <= 360 and event.y >= y_pos_offset and event.y <= 200+y_pos_offset:
+        if event.x >= 40 and event.x <= 360 and event.y >= y_pos_offset and event.y <= 194+y_pos_offset:
             y_pos_fixed = event.y-y_pos_offset
             self.v['selection_position'] = y_pos_binned = int(y_pos_fixed/15)
             self.canvas.coords(self.selection_overlay, (40, y_pos_binned*15+y_pos_offset))
             if self.v['current_screen'] == "textcolor_screen" and button == "B3":
-                color_index = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
-                if y_pos_binned < len(color_index):
-                    new_color = colorchooser.askcolor(initialcolor = self.text_config[color_index[y_pos_binned]]['rgb'])[1]
-                    if new_color:
-                        self.text_config[color_index[y_pos_binned]]['rgb'] = new_color
-                        self.updateCanvas()
+                self.loadCustomColor()
             if self.v['current_screen'] in ["sd_screen", "nand_screen", "options_screen", "titles_screen", "ticket_screen", "titledb_screen", "remote_install_screen", "success_screen"] and button == "B3":
                 self.changeScreen("main_screen")
             elif self.v['current_screen'] == "main_screen" and button == "B3":
@@ -354,274 +450,343 @@ class AppWindow(tk.Tk):
                     self.changeScreen("remote_install_screen")
                 if y_pos_binned == 13:
                     print('Updates')
-                    #self.changeScreen("success_screen")
     def updateCanvas(self):
-        print("Refreshing canvas variables")
+        #print("Refreshing canvas variables")
         #Delete all current canvas elements
-        self.canvas.delete("all")
-        #Map all changed screen element bindings (images, colors, text, etc.)
-        screen = {
-            'textcolor_screen': {
-                #Text
-                'meta_info_box_text': ["", self.text_config['text']['rgb']],
-                'meta_info_text': ["", self.text_config['text']['rgb']],
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text00'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['{:<40}{:>50}'.format('text', swapRGBBGR(self.text_config['text']['rgb'])),self.text_config['text']['rgb']],
-                'bottom_screen_listing02': ['{:<40}{:>48}'.format('nand', swapRGBBGR(self.text_config['nand']['rgb'])),self.text_config['nand']['rgb']],
-                'bottom_screen_listing03': ['{:<40}{:>50}'.format('sd', swapRGBBGR(self.text_config['sd']['rgb'])),self.text_config['sd']['rgb']],
-                'bottom_screen_listing04': ['{:<40}{:>41}'.format('gamecard', swapRGBBGR(self.text_config['gamecard']['rgb'])),self.text_config['gamecard']['rgb']],
-                'bottom_screen_listing05': ['{:<40}{:>48}'.format('dstitle', swapRGBBGR(self.text_config['dstitle']['rgb'])),self.text_config['dstitle']['rgb']],
-                'bottom_screen_listing06': ['{:<40}{:>51}'.format('file', swapRGBBGR(self.text_config['file']['rgb'])),self.text_config['file']['rgb']],
-                'bottom_screen_listing07': ['{:<40}{:>45}'.format('directory', swapRGBBGR(self.text_config['directory']['rgb'])),self.text_config['directory']['rgb']],
-                'bottom_screen_listing08': ['{:<40}{:>45}'.format('enabled', swapRGBBGR(self.text_config['enabled']['rgb'])),self.text_config['enabled']['rgb']],
-                'bottom_screen_listing09': ['{:<40}{:>45}'.format('disabled', swapRGBBGR(self.text_config['disabled']['rgb'])),self.text_config['disabled']['rgb']],
-                'bottom_screen_listing10': ['{:<40}{:>46}'.format('installed', swapRGBBGR(self.text_config['installed']['rgb'])),self.text_config['installed']['rgb']],
-                'bottom_screen_listing11': ['{:<40}{:>43}'.format('notinstalled', swapRGBBGR(self.text_config['notinstalled']['rgb'])),self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing12': ['{:<40}{:>43}'.format('ticketinuse', swapRGBBGR(self.text_config['ticketinuse']['rgb'])),self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing13': ['{:<40}{:>40}'.format('ticketnotinuse', swapRGBBGR(self.text_config['ticketnotinuse']['rgb'])),self.text_config['ticketnotinuse']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text00'], self.text_config['text']['rgb']],
-                #Image
-                'meta_info_box': self.i['meta_info_box'],
-                'meta_info_box_icon': self.icon['app'],
-                'meta_info_box_shadow': self.i['meta_info_box_shadow'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'main_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text01'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['SD',self.text_config['text']['rgb']],
-                'bottom_screen_listing02': ['CTR NAND',self.text_config['text']['rgb']],
-                'bottom_screen_listing03': ['TWL NAND (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing04': ['TWL Photo',self.text_config['text']['rgb']],
-                'bottom_screen_listing05': ['TWL Sound (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing06': ['Dump NAND',self.text_config['text']['rgb']],
-                'bottom_screen_listing07': ['Titles',self.text_config['text']['rgb']],
-                'bottom_screen_listing08': ['Pending Titles (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing09': ['Tickets',self.text_config['text']['rgb']],
-                'bottom_screen_listing10': ['Ext Save Data (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing11': ['System Save Data (WIP)',self.text_config['text']['rgb']],
-                'bottom_screen_listing12': ['TitleDB',self.text_config['text']['rgb']],
-                'bottom_screen_listing13': ['Remote Install',self.text_config['text']['rgb']],
-                'bottom_screen_listing14': ['Update',self.text_config['text']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text01'], self.text_config['text']['rgb']],
-                'logo': self.i['logo'],
-                'scroll_bar': self.i['scroll_bar'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'sd_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text02'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['<current directory>',self.text_config['directory']['rgb']],
-                'bottom_screen_listing02': ['3ds',self.text_config['directory']['rgb']],
-                'bottom_screen_listing03': ['CIAs',self.text_config['directory']['rgb']],
-                'bottom_screen_listing04': ['fbi',self.text_config['directory']['rgb']],
-                'bottom_screen_listing05': ['hblauncherloader',self.text_config['directory']['rgb']],
-                'bottom_screen_listing06': ['JKSV',self.text_config['directory']['rgb']],
-                'bottom_screen_listing07': ['luma',self.text_config['directory']['rgb']],
-                'bottom_screen_listing08': ['Nintendo3DS',self.text_config['directory']['rgb']],
-                'bottom_screen_listing09': ['arm9loaderhax.bin',self.text_config['file']['rgb']],
-                'bottom_screen_listing10': ['boot.3dsx',self.text_config['file']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text02'], self.text_config['text']['rgb']],
-                'scroll_bar': self.i['scroll_bar'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'nand_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text03'], self.text_config['text']['rgb']],
-                'bottom_screen_justified_text': ["Modifying the NAND is dangerous and can render\nthe system inoperable.\nMake sure you know what you are doing.\n\nProceed?", self.text_config['text']['rgb']],
-                'button_text' : ["Yes (A)                                        No (B)", self.text_config['text']['rgb']],
-                'button_small': self.i['button_small'],
-                },
-            'titles_screen': {
-                'meta_info_box_text': ["{}\n{}\n{}".format(self.app_config['theme_title'], self.app_config['theme_desc'], self.app_config['theme_author']), self.text_config['text']['rgb']],
-                'meta_info_text': ["Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB", self.text_config['text']['rgb']],
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text04'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['FBI',self.text_config['sd']['rgb']],
-                'bottom_screen_listing02': ['Super ftpd II Turbo',self.text_config['sd']['rgb']],
-                'bottom_screen_listing03': ['hblauncher_loader v1.2',self.text_config['sd']['rgb']],
-                'bottom_screen_listing04': ["JK's Save Manager",self.text_config['sd']['rgb']],
-                'bottom_screen_listing05': ['NEW ラブプラス+',self.text_config['sd']['rgb']],
-                'bottom_screen_listing06': ['Theme',self.text_config['sd']['rgb']],
-                'bottom_screen_listing07': ['Friend List',self.text_config['nand']['rgb']],
-                'bottom_screen_listing08': ['Internet Browser',self.text_config['nand']['rgb']],
-                'bottom_screen_listing09': ['Notifications',self.text_config['nand']['rgb']],
-                'bottom_screen_listing10': ['System Settings',self.text_config['nand']['rgb']],
-                'bottom_screen_listing11': ['Hoshigami Remix',self.text_config['gamecard']['rgb']],
-                'bottom_screen_listing12': ['Cave Story',self.text_config['dstitle']['rgb']],
-                'bottom_screen_listing13': ['DS Download Play',self.text_config['dstitle']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text03'], self.text_config['text']['rgb']],
-                'meta_info_box': self.i['meta_info_box'],
-                'meta_info_box_icon': self.icon['app'],
-                'meta_info_box_shadow': self.i['meta_info_box_shadow'],
-                'scroll_bar': self.i['scroll_bar'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'options_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text12'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['Show hidden',self.text_config['disabled']['rgb']],
-                'bottom_screen_listing02': ['Show directories',self.text_config['enabled']['rgb']],
-                'bottom_screen_listing03': ['Show files',self.text_config['enabled']['rgb']],
-                'bottom_screen_listing04': ['Show CIAs',self.text_config['enabled']['rgb']],
-                'bottom_screen_listing05': ['Show tickets',self.text_config['enabled']['rgb']],
-                'bottom_screen_bottom_bar_text': ['A: Toggle, B: Return', self.text_config['text']['rgb']],
-                'scroll_bar': self.i['scroll_bar'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'ticket_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text06'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['000400000F800100',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing02': ['000400000BEEF500',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing03': ['000400000D921E00',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing04': ['0004000002C23200',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing05': ['00040000000F4E00',self.text_config['ticketnotinuse']['rgb']],
-                'bottom_screen_listing06': ['0004008C00008F00',self.text_config['ticketnotinuse']['rgb']],
-                'bottom_screen_listing07': ['0004003000009602',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing08': ['0004003000009402',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing09': ['0004003000009702',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing10': ['0004001000021000',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing11': ['000400000F12EE00',self.text_config['ticketnotinuse']['rgb']],
-                'bottom_screen_listing12': ['000400000009B300',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_listing13': ['00048005484E4441',self.text_config['ticketinuse']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text04'], self.text_config['text']['rgb']],
-                'scroll_bar': self.i['scroll_bar'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'titledb_screen': {
-                'meta_info_box_text': ["{}\n{}\n{}".format(self.app_config['theme_title'], self.app_config['theme_desc'], self.app_config['theme_author']), self.text_config['text']['rgb']],
-                'meta_info_text': ["Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB", self.text_config['text']['rgb']],
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text09'], self.text_config['text']['rgb']],
-                'bottom_screen_listing01': ['Boot NTR Selector',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing02': ['CTRXplorer',self.text_config['installed']['rgb']],
-                'bottom_screen_listing03': ['FBI',self.text_config['installed']['rgb']],
-                'bottom_screen_listing04': ['GYTB',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing05': ['hblauncher_loader v1.2',self.text_config['installed']['rgb']],
-                'bottom_screen_listing06': ["JK's Save Manager",self.text_config['installed']['rgb']],
-                'bottom_screen_listing07': ['Luma3DS Updater',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing08': ['MultiUpdater',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing09': ['Non-Stop Nyan Cat',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing10': ['OpenSyobon3DS',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing11': ['PKSM',self.text_config['notinstalled']['rgb']],
-                'bottom_screen_listing12': ['Super ftpd II Turnbo',self.text_config['installed']['rgb']],
-                'bottom_screen_listing13': ['TWLoader',self.text_config['installed']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text04'], self.text_config['text']['rgb']],
-                'meta_info_box': self.i['meta_info_box'],
-                'meta_info_box_icon': self.icon['app'],
-                'meta_info_box_shadow': self.i['meta_info_box_shadow'],
-                'scroll_bar': self.i['scroll_bar'],
-                'selection_overlay': self.i['selection_overlay'],
-                },
-            'remote_install_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text10'], self.text_config['text']['rgb']],
-                'bottom_screen_bottom_bar_text': [self.l['bottom_screen_bottom_bar_text06'], self.text_config['text']['rgb']],
-                'progress_bar_bg': self.i['progress_bar_bg']
-                },
-            'success_screen': {
-                'bottom_screen_top_bar_text': [self.l['bottom_screen_top_bar_text11'], self.text_config['text']['rgb']],
-                'bottom_screen_justified_text': ["No updates available.", self.text_config['text']['rgb']],
-                'button_large': self.i['button_large'],
-                'button_text' : ["Okay (Any Button)", self.text_config['text']['rgb']]
-                }
-            }
-        #Recreate all canvas elements
-        self.createCanvas(screen[self.v['current_screen']])
-    def createCanvas(self, screen_dict):
-        print("Populating canvas elements...")
-        d = {
-            #Text
-            'meta_info_box_text': ['',''],
-            'meta_info_text': ['',''],
-            'bottom_screen_top_bar_text': ['',''],
-            'bottom_screen_listing01': ['',''],
-            'bottom_screen_listing02': ['',''],
-            'bottom_screen_listing03': ['',''],
-            'bottom_screen_listing04': ['',''],
-            'bottom_screen_listing05': ['',''],
-            'bottom_screen_listing06': ['',''],
-            'bottom_screen_listing07': ['',''],
-            'bottom_screen_listing08': ['',''],
-            'bottom_screen_listing09': ['',''],
-            'bottom_screen_listing10': ['',''],
-            'bottom_screen_listing11': ['',''],
-            'bottom_screen_listing12': ['',''],
-            'bottom_screen_listing13': ['',''],
-            'bottom_screen_listing14': ['',''],
-            'bottom_screen_justified_text': ['',''],
-            'bottom_screen_bottom_bar_text': ['',''],
-            'button_text': ['',''],
-            #Image
-            'button_large': "",
-            'button_small': "",
-            'logo': "",
-            'meta_info_box': "",
-            'meta_info_box_icon': "",
-            'meta_info_box_shadow': "",
-            'progress_bar_bg': "",
-            'scroll_bar': "",
-            'selection_overlay': "",
-            }
-        for key in d:
+        for color_key in self.text_config:
             try:
-                d[key] = screen_dict[key]
-            except: pass
-        #Set text font
-        self.font_normal = font.Font(family='Arial', size=-12, weight="bold")
-        self.font_mini   = font.Font(family='Arial', size=7,   weight="bold")
+                self.sliders[color_key][1].lower()
+            except:
+                pass
+        self.canvas.delete("all")
         #Bottom screen offsets
         x_offset = 40
         y_offset = self.app_config['screen_gap']+240
-        
-        #Layer 0 (Background images)
-        self.canvas.create_image(0, 0, anchor = tk.NW, image=self.i['top_screen_bg'])
-        self.canvas.create_image(0+x_offset, 0+y_offset, anchor = tk.NW, image=self.i['bottom_screen_bg'])
-        
-        #Layer 1 (Screen Information)
-        self.canvas.create_image(200, 120, image=d['logo'])
-        line_height = 15
-        line_offset = 20+y_offset #Height of top bar+y_offset
-        self.canvas.create_image(24, 22, anchor = tk.NW, image=d['meta_info_box_shadow'])
-        self.canvas.create_image(40, 38, anchor = tk.NW, image=d['meta_info_box'])
-        self.canvas.create_image(72, 70, image=d['meta_info_box_icon'])
-        self.canvas.create_text(102, 48, anchor = tk.NW, fill=d['meta_info_box_text'][1], text=d['meta_info_box_text'][0])
-        self.canvas.create_text(200, 111, anchor = tk.N, justify='center', fill=d['meta_info_text'][1], text=d['meta_info_text'][0])
-        for i in range(1, 15):
-            self.canvas.create_text(2+x_offset, line_height*(i-1)+line_offset, anchor=tk.NW, font=self.font_normal, fill=d['bottom_screen_listing{0:02d}'.format(i)][1], text=d['bottom_screen_listing{0:02d}'.format(i)][0])
-        self.canvas.create_image(0+320+x_offset, line_offset, anchor = tk.NE, image=d['scroll_bar'])
-        self.selection_overlay = self.canvas.create_image(0+x_offset, self.v['selection_position']*15+line_offset, anchor = tk.NW, image=d['selection_overlay'])
-        self.canvas.create_text(160+x_offset, 68+line_offset, justify='center', font=self.font_normal, fill=d['bottom_screen_justified_text'][1], text=d['bottom_screen_justified_text'][0])
-        
-        #Buttons
-        self.canvas.create_image(10+x_offset, 155+y_offset, anchor = tk.NW, image=d['button_large'])
-        self.canvas.create_image(10+x_offset, 155+y_offset, anchor = tk.NW, image=d['button_small'])
-        self.canvas.create_image(165+x_offset, 155+y_offset, anchor = tk.NW, image=d['button_small'])
-        self.canvas.create_text(200, 184+y_offset, fill=d['button_text'][1], text=d['button_text'][0])
-        #Progress bar
-        self.canvas.create_image(10+x_offset, 95+y_offset, anchor = tk.NW, image=d['progress_bar_bg'])
-        #Layer 2 (Top bars)
-        self.canvas.create_image(0, 0, anchor = tk.NW, image=self.i['top_screen_top_bar'])
-        self.canvas.create_image(0, 220, anchor = tk.NW, image=self.i['top_screen_bottom_bar'])
-        self.canvas.create_image(0, 20, anchor = tk.NW, image=self.i['top_screen_top_bar_shadow'])
-        self.canvas.create_image(0, 204, anchor = tk.NW, image=self.i['top_screen_bottom_bar_shadow'])
-        #Layer 2 (Bottom bars)
-        self.canvas.create_image(0+x_offset, 0+y_offset, anchor = tk.NW, image=self.i['bottom_screen_top_bar'])
-        self.canvas.create_image(0+x_offset, 220+y_offset, anchor = tk.NW, image=self.i['bottom_screen_bottom_bar'])
-        self.canvas.create_image(0+x_offset, 20+y_offset, anchor = tk.NW, image=self.i['bottom_screen_top_bar_shadow'])
-        self.canvas.create_image(0+x_offset, 220+y_offset, anchor = tk.SW, image=self.i['bottom_screen_bottom_bar_shadow'])
-        
-        #Layer 3 (Top bar overlays)
-        self.canvas.create_text(2, 10, anchor = tk.W, font=self.font_normal, fill=self.text_config['text']['rgb'], text = "Ver. {}".format(self.app_config['theme_version']))
-        self.canvas.create_text(2, 230, anchor = tk.W, font=self.font_mini, fill=self.text_config['text']['rgb'], text = "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.v['sd_ex'], self.v['ctrnand_ex'], self.v['twlnand_ex'], self.v['twlphoto_ex']))
-        #Layer 3 (Bottom bar overlays)
-        self.canvas.create_text(200, 10+y_offset, font=self.font_normal, fill=d['bottom_screen_top_bar_text'][1], text = d['bottom_screen_top_bar_text'][0])
-        self.canvas.create_text(200, 230+y_offset, font=self.font_normal, fill=d['bottom_screen_bottom_bar_text'][1], text = d['bottom_screen_bottom_bar_text'][0])
-        
+        self.v['canvas_image'].paste(self.c[self.v['current_screen']]['top_screen'], (0,0))
+        self.v['canvas_image'].paste(self.c[self.v['current_screen']]['bottom_screen'], (x_offset,y_offset))
+        self.image_preview = ImageTk.PhotoImage(self.v['canvas_image'])
+        self.canvas.create_image(0,0, anchor=tk.NW, image=self.image_preview)
+        if self.v['current_screen'] in ['textcolor_screen', 'main_screen', 'sd_screen', 'titles_screen', 'titledb_screen', 'ticket_screen', 'options_screen']:
+            selection_image = self.i['selection_overlay']
+        else:
+            selection_image = ''
+        self.selection_overlay = self.canvas.create_image(x_offset, self.v['selection_position']*15+y_offset+20, anchor=tk.NW, image=selection_image)
         #Layer topmost (toolbar buttons)
         self.canvas.create_window(0, y_offset, anchor=tk.NW, tags='toolbar', window=self.fbipreview_button)
         self.canvas.create_window(0, 40+y_offset, anchor=tk.NW, tags='toolbar', window=self.textcolor_button)
         self.canvas.create_window(x_offset+320, y_offset, anchor=tk.NW, tags='toolbar', window=self.opendir_button)
         self.canvas.create_window(x_offset+320, 40+y_offset, anchor=tk.NW, tags='toolbar', window=self.save_button)
         self.canvas.create_window(x_offset+320, 80+y_offset, anchor=tk.NW, tags='toolbar', window=self.screenshot_button)
-        self.updateAnimationLoop()
+        
+        #Layer Textcolor Sliders
+        if self.v['current_screen'] == 'textcolor_screen':
+            config_array = ['text', 'nand', 'sd', 'gamecard', 'dstitle', 'file', 'directory', 'enabled', 'disabled', 'installed', 'notinstalled', 'ticketinuse', 'ticketnotinuse']
+            for i in range(len(config_array)):
+                color_key = config_array[i]
+                self.sliders[color_key][1].lift()
+                self.canvas.create_window(x_offset+208, i*15+22+y_offset, anchor=tk.NW, tags='slider', window=self.sliders[color_key][0])
+    def rebuildCache(self):
+        for key in self.c:
+            self.drawCanvasCache(key)
+    def drawFontCache(self, screen_name, screen='topbottom', type='mainbar'):
+        text = {
+                'top_screen_main': [],
+                'top_screen_bar' : [],
+                'bottom_screen_main': [],
+                'bottom_screen_bar' : [],
+            }
+        #Top screen
+        if 'top' in screen:
+            text['top_screen_bar'] = [
+                    {'coord': (2,10), 'color': self.text_config['text'], 'text': 'Ver. 2.4.7', 'font_type': self.v['font_normal'], 'anchor':'W', 'alignment': 'left'},
+                    {'coord': (200,10), 'color': self.text_config['text'], 'text': "{:%a %b %d %H:%M:%S %Y}".format(datetime.datetime.now()), 'font_type': self.v['font_normal'], 'anchor':'', 'alignment': 'center'},
+                    {'coord': (2,230), 'color': self.text_config['text'], 'text': "SD: {} GiB, CTR NAND: {} MiB, TWL NAND: {} MiB, TWL Photo: {} MiB".format(self.v['sd_ex'], self.v['ctrnand_ex'], self.v['twlnand_ex'], self.v['twlphoto_ex']), 'font_type': self.v['font_mini'], 'anchor':'W', 'alignment': 'left'},
+                ]
+            if screen_name in ['textcolor_screen', 'titles_screen', 'titledb_screen']:
+                text['top_screen_bar'] += [
+                    {'coord': (102,48), 'color': self.text_config['text'], 'text': '{}\n{}\n{}'.format(self.app_config['theme_title'], self.app_config['theme_desc'], self.app_config['theme_author']), 'font_type': self.v['font_normal'], 'anchor':'NW', 'alignment': 'left'},
+                    {'coord': (200, 111), 'color': self.text_config['text'], 'text': 'Title ID: 0004000000FBIP00\nMedia Type: SD\nVersion: 0\nProduct Code: CTR-P-FBIP\nRegion: North America\nSize: 1.56 GiB', 'font_type': self.v['font_normal'], 'anchor':'N', 'alignment': 'center'},
+                ]
+        if 'bottom' in screen:
+            row_text =[]
+            if screen_name in ['textcolor_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Textcolor.cfg', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': "Don't forget to save!", 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['text',           self.text_config['text']],
+                        ['nand',           self.text_config['nand']],
+                        ['sd',             self.text_config['sd']],
+                        ['gamecard',       self.text_config['gamecard']],
+                        ['dstitle',        self.text_config['dstitle']],
+                        ['file',           self.text_config['file']],
+                        ['directory',      self.text_config['directory']],
+                        ['enabled',        self.text_config['enabled']],
+                        ['disabled',       self.text_config['disabled']],
+                        ['installed',      self.text_config['installed']],
+                        ['notinstalled',   self.text_config['notinstalled']],
+                        ['ticketinuse',    self.text_config['ticketinuse']],
+                        ['ticketnotinuse', self.text_config['ticketnotinuse']],
+                    ]
+            if screen_name in ['main_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Main Menu', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'A: Select, START: Exit', 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['SD',               self.text_config['text']],
+                        ['CTR NAND',         self.text_config['text']],
+                        ['TWL NAND',         self.text_config['text']],
+                        ['TWL Photo',        self.text_config['text']],
+                        ['TWL Sound',        self.text_config['text']],
+                        ['Dump NAND',        self.text_config['text']],
+                        ['Titles',           self.text_config['text']],
+                        ['Pending Titles',   self.text_config['text']],
+                        ['Tickets',          self.text_config['text']],
+                        ['Ext Save Data',    self.text_config['text']],
+                        ['System Save Data', self.text_config['text']],
+                        ['TitleDB',          self.text_config['text']],
+                        ['Remote Install',   self.text_config['text']],
+                        ['Update',           self.text_config['text']],
+                    ]
+            if screen_name in ['sd_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Files', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'A: Select, B: Back, X: Refresh, Select: Options', 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['<current directory>', self.text_config['directory']],
+                        ['3ds',                 self.text_config['directory']],
+                        ['CIAs',                self.text_config['directory']],
+                        ['fbi',                 self.text_config['directory']],
+                        ['hblauncherloader',    self.text_config['directory']],
+                        ['JKSV',                self.text_config['directory']],
+                        ['luma',                self.text_config['directory']],
+                        ['Nintendo3DS',         self.text_config['directory']],
+                        ['arm9loaderhax.bin',   self.text_config['file']],
+                        ['boot.3dsx',           self.text_config['file']],
+                    ]
+            if screen_name in ['nand_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Confirmation', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,87), 'color': self.text_config['text'], 'text': 'Modifying the NAND is dangerous and can render\nthe system inoperable.\nMake sure you know what you are doing.\n\nProceed?', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (10+72,155+30), 'color': self.text_config['text'], 'text': 'Yes (A)', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (10+72+155,155+30), 'color': self.text_config['text'], 'text': 'No (B)', 'anchor':'', 'alignment': 'center'},
+                    ]
+            if screen_name in ['options_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Options', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'A: Toggle, B: Return', 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['Show hidden',      self.text_config['disabled']],
+                        ['Show directories', self.text_config['enabled']],
+                        ['Show files',       self.text_config['enabled']],
+                        ['Show CIAs',        self.text_config['enabled']],
+                        ['Show tickets',     self.text_config['enabled']],
+                    ]
+            if screen_name in ['titles_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Titles', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'A: Select, B: Return, X: Refresh, Select: Options', 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['FBI',                    self.text_config['sd']],
+                        ['Super ftpd II Turbo',    self.text_config['sd']],
+                        ['hblauncher_loader v1.2', self.text_config['sd']],
+                        ["JK's Save Manager",      self.text_config['sd']],
+                        ['NEW ラブプラス+',           self.text_config['sd']],
+                        ['Theme',                  self.text_config['sd']],
+                        ['Friend List',            self.text_config['nand']],
+                        ['Internet Browser',       self.text_config['nand']],
+                        ['Notifications',          self.text_config['nand']],
+                        ['System Settings',        self.text_config['nand']],
+                        ['Hoshigami Remix',        self.text_config['gamecard']],
+                        ['Cave Story',             self.text_config['dstitle']],
+                        ['DS Download Play',       self.text_config['dstitle']],
+                    ]
+            if screen_name in ['ticket_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Tickets', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'A: Select, B: Return, X: Refresh', 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['000400000F800100', self.text_config['ticketinuse']],
+                        ['000400000BEEF500', self.text_config['ticketinuse']],
+                        ['000400000D921E00', self.text_config['ticketinuse']],
+                        ['0004000002C23200', self.text_config['ticketinuse']],
+                        ['00040000000F4E00', self.text_config['ticketnotinuse']],
+                        ['0004008C00008F00', self.text_config['ticketnotinuse']],
+                        ['0004003000009602', self.text_config['ticketinuse']],
+                        ['0004003000009402', self.text_config['ticketinuse']],
+                        ['0004003000009702', self.text_config['ticketinuse']],
+                        ['0004001000021000', self.text_config['ticketinuse']],
+                        ['000400000F12EE00', self.text_config['ticketnotinuse']],
+                        ['000400000009B300', self.text_config['ticketinuse']],
+                        ['00048005484E4441', self.text_config['ticketinuse']],
+                    ]
+            if screen_name in ['titledb_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'TitleDB.com', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'A: Select, B: Return, X: Refresh', 'anchor':'', 'alignment': 'center'},
+                    ]
+                row_text = [
+                        ['Boot NTR Selector',      self.text_config['notinstalled']],
+                        ['CTRXplorer',             self.text_config['installed']],
+                        ['FBI',                    self.text_config['installed']],
+                        ['GYTB',                   self.text_config['notinstalled']],
+                        ['hblauncher_loader v1.2', self.text_config['installed']],
+                        ["JK's Save Manager",      self.text_config['installed']],
+                        ['Luma3DS Updater',        self.text_config['notinstalled']],
+                        ['MultiUpdater',           self.text_config['notinstalled']],
+                        ['Non-Stop Nyan Cat',      self.text_config['notinstalled']],
+                        ['OpenSyobon3DS',          self.text_config['notinstalled']],
+                        ['PKSM',                   self.text_config['notinstalled']],
+                        ['Super ftpd II Turbo',    self.text_config['installed']],
+                        ['TWLoader',               self.text_config['notinstalled']],
+                    ]
+            if screen_name in ['remote_install_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Installing from URL(s)', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,230), 'color': self.text_config['text'], 'text': 'Press B to cancel.', 'anchor':'', 'alignment': 'center'},
+                    ]
+            if screen_name in ['success_screen']:
+                text['bottom_screen_bar'] = [
+                        {'coord': (160,10), 'color': self.text_config['text'], 'text': 'Success', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,155+30), 'color': self.text_config['text'], 'text': 'Okay (Any Button)', 'anchor':'', 'alignment': 'center'},
+                        {'coord': (160,87), 'color': self.text_config['text'], 'text': 'NAND dumped.', 'anchor':'', 'alignment': 'center'},
+                    ]
+            if row_text:
+                for i in range(len(row_text)):
+                    text['bottom_screen_main'].append({'coord': (2, 15*(i)+21), 'color': row_text[i][1], 'text': row_text[i][0], 'anchor':'NW', 'alignment': 'left'})
+        for key in text:
+            if 'top_screen' in key:
+                for i in range(len(text[key])):
+                    text[key][i].update({'screen': self.v['d_top_screen']})
+            if 'bottom_screen' in key:
+                for i in range(len(text[key])):
+                    text[key][i].update({'screen': self.v['d_bottom_screen'], 'font_type': self.v['font_normal']})
+        for key in text:
+            if key.rsplit('_', 1)[1] in type:
+                if len(text[key]):
+                    for i in range(len(text[key])):
+                        d = text[key][i]
+                        r,g,b,a = d['color']
+                        fade = 0.4
+                        r = (255 - r) * fade + r
+                        g = (255 - g) * fade + g
+                        b = (255 - b) * fade + b
+                        tmp_image = Image.new('RGBA', (400, 240), (int(r),int(g),int(b),0))
+                        d_tmp_image = ImageDraw.Draw(tmp_image)
+                        self.drawText(d_tmp_image, d['font_type'], d['color'], d['text'], d['coord'], d['anchor'], d['alignment'])
+                        self.drawImage(self.v[key.rsplit('_', 1)[0]], (0,0), tmp_image)
+    def drawCanvasCache(self, screen_name, screen='topbottom'):
+        screen_top = []
+        screen_bottom = []
+        if 'top' in screen:
+            screen_top = [
+                    {'priority': 5},
+                    {'priority': 10},
+                    {'priority': 1, 'coord': (0,0), 'data': self.i['top_screen_bg']},
+                    {'priority': 7, 'coord': (0,0), 'data': self.i['top_screen_top_bar']},
+                    {'priority': 7, 'coord': (0,20), 'data': self.i['top_screen_top_bar_shadow']},
+                    {'priority': 7, 'coord': (0,220), 'data': self.i['top_screen_bottom_bar']},
+                    {'priority': 7, 'coord': (0,204), 'data': self.i['top_screen_bottom_bar_shadow']},
+                ]
+            #Meta Info Box
+            if screen_name in ['textcolor_screen', 'titles_screen', 'titledb_screen']:
+                meta_info_box = [
+                        {'priority': 4, 'coord': (int(72-(self.icon['app'].size[0]/2)), int(70-(self.icon['app'].size[1]/2))), 'data': self.icon['app']},
+                        {'priority': 3, 'coord': (40, 38), 'data': self.i['meta_info_box']},
+                        {'priority': 2, 'coord': (24, 22), 'data': self.i['meta_info_box_shadow']},
+                    ]
+                screen_top += meta_info_box
+            #Logo
+            if screen_name in ['main_screen']:
+                logo = [
+                        {'priority': 2, 'coord': (136, 56), 'data': self.i['logo']},
+                    ]
+                screen_top += logo
+            for i in range(len(screen_top)):
+                screen_top[i].update({'screen': self.v['top_screen']})
+        if 'bottom' in screen:
+            screen_bottom = [
+                    {'priority': 5},
+                    {'priority': 10},
+                    {'priority': 1, 'coord': (0,0), 'data': self.i['bottom_screen_bg']},
+                    {'priority': 7, 'coord': (0,0), 'data': self.i['bottom_screen_top_bar']},
+                    {'priority': 7, 'coord': (0,20), 'data': self.i['bottom_screen_top_bar_shadow']},
+                    {'priority': 7, 'coord': (0,220), 'data': self.i['bottom_screen_bottom_bar']},
+                    {'priority': 7, 'coord': (0,204), 'data': self.i['bottom_screen_bottom_bar_shadow']},
+                ]
+            #Scrollbar
+            if screen_name in ['textcolor_screen', 'main_screen', 'sd_screen', 'titles_screen', 'options_screen', 'ticket_screen', 'titledb_screen']:
+                scroll_bar = [
+                        {'priority': 6, 'coord': (310,20), 'data': self.i['scroll_bar']},
+                    ]
+                screen_bottom += scroll_bar
+            #Progress Bar
+            if screen_name in ['remote_install_screen']:
+                progress_bar = [
+                        {'priority': 3, 'coord': (10, 95), 'data': self.i['progress_bar_bg']},
+                    ]
+                screen_bottom += progress_bar
+            #Button Small
+            if screen_name in ['nand_screen']:
+                button_small = [
+                        {'priority': 3, 'coord': (10, 155), 'data': self.i['button_small']},
+                        {'priority': 3, 'coord': (165, 155), 'data': self.i['button_small']},
+                    ]
+                screen_bottom += button_small
+            #Button Large
+            if screen_name in ['success_screen']:
+                button_large = [
+                        {'priority': 3, 'coord': (10, 155), 'data': self.i['button_large']},
+                    ]
+                screen_bottom += button_large
+            for i in range(len(screen_bottom)):
+                screen_bottom[i].update({'screen': self.v['bottom_screen']})
+        screen_base = screen_top + screen_bottom
+        screen_base = sorted(screen_base, key=lambda k: k['priority'])
+        for i in range(len(screen_base)):
+            sc = screen_base[i]
+            if sc['priority'] == 5:
+                self.drawFontCache(screen_name, screen=screen, type='main')
+            elif sc['priority'] == 10:
+                self.drawFontCache(screen_name, screen=screen, type='bar')
+            else:
+                self.drawImage(sc['screen'], sc['coord'], sc['data'])
+        if 'top' in screen:
+            self.c[screen_name]['top_screen'] = self.v['top_screen'].copy()
+        if 'bottom' in screen:
+            self.c[screen_name]['bottom_screen'] = self.v['bottom_screen'].copy()
+    def drawText(self, draw_handle, font_type, color, text, coord, anchor, alignment):
+        fnt_w, fnt_h = draw_handle.multiline_textsize(text, font=font_type)
+        x_coord, y_coord = coord
+        x_offset = -int(fnt_w/2)
+        y_offset = -int(fnt_h/2)
+        if 'N' in anchor:
+            y_offset = 0
+        if 'W' in anchor:
+            x_offset = 0
+        if 'E' in anchor:
+            x_offset = -fnt_w
+        if 'S' in anchor:
+            y_offset = -fnt_h
+        draw_handle.text((x_coord+x_offset, y_coord+y_offset+1), text, font=font_type, fill=color, align=alignment)
+    def drawImage(self, screen, coord, data):
+        try:
+            r,g,b,a = data.split()
+            fg = Image.merge("RGB", (r, g, b))
+            mask = Image.merge("L", (a,))
+            screen.paste(fg, coord, mask)
+        except: pass
     def updateAnimationLoop(self, loop=False):
         #print("Repopulating canvas animations...")
-        #Delete animated canvas elements
-        self.canvas.delete("animate")
+        self.drawCanvasCache(self.v['current_screen'], screen='top')
+        self.updateCanvas()
+        """
         #Bottom screen offsets
         x_offset = 40
         y_offset = self.app_config['screen_gap']+240
@@ -646,6 +811,7 @@ class AppWindow(tk.Tk):
         self.canvas.create_image(371, 2, anchor = tk.NW, tags='animate', image=animated['battery'][frames['battery']])
         if self.v['current_screen'] == "remote_install_screen":
             self.progress_bar_content = self.canvas.create_image(20+x_offset, 105+y_offset, anchor = tk.NW, tags='animate', image=animated['progress'][frames['progress']])
+        """
         if loop:
             self.canvas.after(1000, lambda: self.updateAnimationLoop(loop=True))
     def cleanupWatchdog(self):
@@ -666,21 +832,13 @@ class FSEventHandler(FileSystemEventHandler):
             path/to/observed/file
         """
         print("Handling filesystem event: {} {}".format(event.event_type, event.src_path))
-        self.appwindow.loadImage(os.path.split(event.src_path)[0], os.path.splitext(os.path.basename(event.src_path))[0])
-        self.appwindow.updateCanvas()
+        if not 'textcolor' in event.src_path:
+            self.appwindow.loadImage(os.path.split(event.src_path)[0], os.path.splitext(os.path.basename(event.src_path))[0])
+            self.appwindow.updateCanvas()
     def on_created(self, event):
         self.process(event)
     def on_modified(self, event):
         self.process(event)
-# Miscellaneous functions
-def swapRGBBGR(color):
-    if len(color) == 7:
-        color = color[1:]
-    color_list = [color[i:i+2] for i in range(0, len(color), 2)]
-    color1 = color_list[0]
-    color2 = color_list[1]
-    color3 = color_list[2]
-    return "#{}{}{}".format(color3,color2,color1).upper()
 
 if __name__ == "__main__":
     app = AppWindow()
